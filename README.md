@@ -33,7 +33,7 @@ cd seminar
 ./install.sh
 ```
 
-The installer builds the frontend, installs the `seminar` CLI, and runs `seminar init` to configure your provider and worker pool.
+The installer builds the frontend, installs the `seminar` CLI, and runs `seminar init` once to bootstrap local state.
 
 Then:
 
@@ -43,9 +43,13 @@ seminar
 
 The dashboard opens at `http://127.0.0.1:8765`. Pass `--headless` to skip the browser.
 
+Open Settings in the dashboard to choose the provider, adjust the agent command, set worker counts and timing, and tell agents what tools and local resources they can use.
+
 ## Configuration
 
-`seminar init` writes `~/.seminar/config.json`. Key settings:
+`seminar init` creates `~/.seminar/config.json`, but ongoing configuration is managed from the dashboard's Settings modal.
+
+Settings currently cover:
 
 | Key | Purpose |
 | --- | --- |
@@ -56,22 +60,9 @@ The dashboard opens at `http://127.0.0.1:8765`. Pass `--headless` to skip the br
 | `intervals.*` | Poll interval, in seconds, per worker type |
 | `timeouts.*` | Per-run timeout, in seconds, per worker type |
 | `follow_up_research_cooldown_minutes` | Minimum gap before an idea is re-studied |
-| `tools` | Extra tool descriptions surfaced to workers (see below) |
+| `tools` | Notes for agents about the tools, files, sites, or other resources available in your environment |
 
-### Telling workers what they can use
-
-Anything in `tools` is injected into the research context. Workers will then know to reach for it.
-
-```json
-"tools": [
-  "GitHub CLI (gh) - use gh search and gh api for repository data",
-  "Sourcegraph CLI (src) - use src search for code search",
-  "kubectl - inspect cluster state",
-  "You have access to an internal wiki at https://wiki.internal - use it to look up company-specific context before going to the web"
-]
-```
-
-Not limited to CLIs: any instruction about what the agent can do belongs here, including MCP servers, internal APIs, access credentials, behavioural constraints, or domain-specific guidance.
+Use the Tools field in Settings for simple notes like "use `gh` for GitHub data", "check our internal wiki first", or "read this local folder before going to the web."
 
 ## Storage
 
@@ -83,7 +74,7 @@ Everything lives under `data_dir`:
 
 ## CLI
 
-The dashboard covers the human workflow. Most CLI commands are intended for workers and external agents: they are how agents claim ideas, submit studies, and propose follow-ups without going through the UI. The handful of exceptions are administrative operations (pausing, resetting, wiping the database) that aren't exposed in the dashboard.
+The dashboard covers the human workflow, including configuration. Most CLI commands are intended for workers and external agents: they are how agents claim ideas, submit studies, and propose follow-ups without going through the UI. The handful of exceptions are bootstrap or administrative operations such as `init`, pausing, resetting, and wiping the database.
 
 ```text
 seminar [--headless]           # launch server + dashboard
