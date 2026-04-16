@@ -146,6 +146,7 @@ export function SettingsModal({ onClose }: Props) {
                   type="text"
                   className="modal-input"
                   value={draft.agent_cmd}
+                  onChange={(e) => setDraft((current) => current ? { ...current, agent_cmd: e.target.value } : current)}
                 />
               </div>
             </div>
