@@ -38,7 +38,7 @@ def _load_migrations() -> list[Migration]:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         migration_id = getattr(module, "MIGRATION_ID", path.stem)
-        up = getattr(module, "up", None)
+        up: Callable[[sqlite3.Connection], None] | None = getattr(module, "up", None)
         if not migration_id or not callable(up):
             raise RuntimeError(
                 f"Migration {path.name} must define MIGRATION_ID and callable up(conn)"
