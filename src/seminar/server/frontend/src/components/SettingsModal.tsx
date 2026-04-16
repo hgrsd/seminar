@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSystemState } from "../hooks/useSystemState";
 import type { Settings } from "../types";
 
@@ -21,7 +21,6 @@ function copySettings(settings: Settings): Settings {
 
 export function SettingsModal({ onClose }: Props) {
   const { getSettings, updateSettings, getProviderDefaults } = useSystemState();
-  const [settings, setSettings] = useState<Settings | null>(null);
   const [draft, setDraft] = useState<Settings | null>(null);
   const [providerDefaults, setProviderDefaults] = useState<Record<string, { default_cmd: string }>>({});
   const [loading, setLoading] = useState(true);
@@ -38,7 +37,6 @@ export function SettingsModal({ onClose }: Props) {
           getSettings(controller.signal),
           getProviderDefaults(controller.signal),
         ]);
-        setSettings(current);
         setDraft(copySettings(current));
         setProviderDefaults(defaults);
       } catch (err) {
@@ -60,15 +58,6 @@ export function SettingsModal({ onClose }: Props) {
   useEffect(() => {
     if (!loading) firstFieldRef.current?.focus();
   }, [loading]);
-
-  const workerChanged = useMemo(() => {
-    if (!settings || !draft) return { initial: false, follow_up: false, connective: false };
-    return {
-      initial: settings.workers.initial !== draft.workers.initial,
-      follow_up: settings.workers.follow_up !== draft.workers.follow_up,
-      connective: settings.workers.connective !== draft.workers.connective,
-    };
-  }, [draft, settings]);
 
   const updateNumber = (
     group: "intervals" | "timeouts" | "workers",
@@ -105,7 +94,6 @@ export function SettingsModal({ onClose }: Props) {
         follow_up_research_cooldown_minutes: draft.follow_up_research_cooldown_minutes,
         tools: draft.tools.map((t) => t.trim()).filter(Boolean),
       });
-      setSettings(next);
       setDraft(copySettings(next));
       onClose();
     } catch (err) {
@@ -164,7 +152,7 @@ export function SettingsModal({ onClose }: Props) {
 
             <div className="settings-card">
               <div className="settings-card-title">Workers</div>
-              <p className="settings-card-blurb">Cooldown: the minimum number of minutes between when an idea was last studied and when it will next be studied.</p>
+              <p className="settings-card-blurb">Cooldown: the minimum number of minutes between when an idea was last studied and when it will next be studied. Changes to worker count take effect after a restart.</p>
               <table className="settings-table">
                 <thead>
                   <tr>
@@ -179,15 +167,12 @@ export function SettingsModal({ onClose }: Props) {
                     <td className="settings-table-label">Count</td>
                     <td>
                       <input id="workers-initial" type="number" min="0" className="modal-input" value={draft.workers.initial} onChange={(e) => updateNumber("workers", "initial", e.target.value)} />
-                      {workerChanged.initial && <span className="settings-restart-note">restart required</span>}
                     </td>
                     <td>
                       <input id="workers-follow-up" type="number" min="0" className="modal-input" value={draft.workers.follow_up} onChange={(e) => updateNumber("workers", "follow_up", e.target.value)} />
-                      {workerChanged.follow_up && <span className="settings-restart-note">restart required</span>}
                     </td>
                     <td>
                       <input id="workers-connective" type="number" min="0" className="modal-input" value={draft.workers.connective} onChange={(e) => updateNumber("workers", "connective", e.target.value)} />
-                      {workerChanged.connective && <span className="settings-restart-note">restart required</span>}
                     </td>
                   </tr>
                   <tr>
