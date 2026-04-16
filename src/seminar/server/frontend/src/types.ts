@@ -102,6 +102,29 @@ export interface SnapshotState {
   session_cost: number;
 }
 
+export interface TimingSettings {
+  initial: number;
+  follow_up: number;
+  connective: number;
+}
+
+export interface WorkerSettings {
+  initial: number;
+  follow_up: number;
+  connective: number;
+}
+
+export interface Settings {
+  provider: string;
+  agent_cmd: string;
+  intervals: TimingSettings;
+  timeouts: TimingSettings;
+  workers: WorkerSettings;
+  follow_up_research_cooldown_minutes: number;
+  tools: string[];
+  available_providers: string[];
+}
+
 export type WSMessage =
   | { type: "snapshot"; data: SnapshotState }
   | { type: "activity_logged"; data: ActivityEvent }

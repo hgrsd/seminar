@@ -129,7 +129,7 @@ def main(argv: list[str] | None = None) -> None:
         db.configure(Path(cfg.data_dir))
 
     dispatch = {
-        "init": lambda: _cmd_init(args.provider),
+        "init": lambda: _cmd_init(getattr(args, "provider", None)),
         "status": lambda: _cmd_status(_svc(), args.slug),
         "done": lambda: _cmd_done(args.slug),
         "reset": lambda: _cmd_reset(args.slug),
@@ -155,106 +155,59 @@ def main(argv: list[str] | None = None) -> None:
         handler()
 
 
-def _strip_control(s: str) -> str:
-    return "".join(c for c in s if c >= " " or c in "\t\n")
+def _pick_provider(flag: str | None, existing_provider: str | None) -> str:
+    available = sorted(providers.PROVIDERS)
 
+    if flag is not None:
+        if flag not in providers.PROVIDERS:
+            print(f"Error: unknown provider {flag!r}. Available: {', '.join(available)}.", file=sys.stderr)
+            sys.exit(1)
+        return flag
 
-def _prompt(label: str, default: str) -> str:
-    default = _strip_control(default)
-    display = f"  {label} [{default}]: " if default else f"  {label}: "
-    value = input(display).strip()
-    return value or default
+    if len(available) == 1:
+        return available[0]
 
-
-def _prompt_provider(default: str) -> str:
-    options = ", ".join(providers.PROVIDERS)
+    default = existing_provider if existing_provider in providers.PROVIDERS else available[0]
+    detected = ", ".join(available)
     while True:
-        value = _prompt(f"Provider ({options})", default)
+        value = input(f"  Select provider (detected: {detected}) [{default}]: ").strip() or default
         if value in providers.PROVIDERS:
             return value
-        print(f"Error: unsupported provider {value!r}. Use one of: {options}.")
+        print(f"  Unknown provider {value!r}. Choose from: {', '.join(available)}.")
 
 
-def _cmd_init(provider_name: str | None) -> None:
-    # Load existing config if re-initializing
+def _cmd_init(provider_flag: str | None) -> None:
     try:
         existing = config.load()
     except (FileNotFoundError, KeyError):
         existing = None
 
-    default_dir = str(Path.home() / ".seminar")
-
-    print("Configure seminar (press Enter to accept defaults):\n")
-
-    provider_name = provider_name or _prompt_provider(
-        existing.provider if existing else "claude-code"
-    )
+    provider_name = _pick_provider(provider_flag, existing.provider if existing else None)
     provider = providers.load(provider_name)
-    data_dir = _prompt("Data directory", existing.data_dir if existing else default_dir)
-    agent_cmd_default = (
+
+    agent_cmd = (
         existing.agent_cmd
         if existing and existing.provider == provider_name
         else provider.agent_cmd_default()
     )
-    agent_cmd = _prompt("Agent command", agent_cmd_default)
-
-    worker_kinds = [("initial", "Initial exploration"), ("follow_up", "Follow-up research"), ("connective", "Connective research")]
-
-    worker_defaults = {
-        "initial": "1",
-        "follow_up": "1",
-        "connective": "0"
-    }
-    worker_vals: dict[str, int] = {}
-    for key, label in worker_kinds:
-        current = str(getattr(existing.workers, key)) if existing else worker_defaults[key]
-        worker_vals[key] = int(_prompt(f"{label} workers", current))
-
-    interval_vals: dict[str, int] = {}
-    for key, label in worker_kinds:
-        current = str(getattr(existing.intervals, key)) if existing else {"initial": "30", "follow_up": "600", "connective": "900"}[key]
-        interval_vals[key] = int(_prompt(f"{label} interval (seconds)", current))
-
-    timeout_vals: dict[str, int] = {}
-    for key, label in worker_kinds:
-        current = str(getattr(existing.timeouts, key)) if existing else "1500"
-        timeout_vals[key] = int(_prompt(f"{label} timeout (seconds)", current))
-
-    cooldown = int(_prompt(
-        "Follow-up research cooldown (minutes)",
-        str(existing.follow_up_research_cooldown_minutes) if existing else "10",
-    ))
 
     cfg = Config(
-        data_dir=data_dir,
+        data_dir=existing.data_dir if existing else str(Path.home() / ".seminar"),
         provider=provider_name,
         agent_cmd=agent_cmd,
-        intervals=IntervalsConfig(
-            initial=interval_vals["initial"],
-            follow_up=interval_vals["follow_up"],
-            connective=interval_vals["connective"],
-        ),
-        timeouts=TimeoutsConfig(
-            initial=timeout_vals["initial"],
-            follow_up=timeout_vals["follow_up"],
-            connective=timeout_vals["connective"],
-        ),
-        workers=WorkersConfig(
-            initial=worker_vals["initial"],
-            follow_up=worker_vals["follow_up"],
-            connective=worker_vals["connective"],
-        ),
-        follow_up_research_cooldown_minutes=cooldown,
+        intervals=existing.intervals if existing else IntervalsConfig(initial=30, follow_up=600, connective=900),
+        timeouts=existing.timeouts if existing else TimeoutsConfig(initial=1500, follow_up=1500, connective=1500),
+        workers=existing.workers if existing else WorkersConfig(initial=1, follow_up=1, connective=0),
+        follow_up_research_cooldown_minutes=existing.follow_up_research_cooldown_minutes if existing else 10,
         tools=existing.tools if existing else [],
     )
 
-    print()
     config.save(cfg)
     db.configure(Path(cfg.data_dir))
     db.init_db()
 
     print(f"Initialized seminar with provider {provider_name!r}.")
-    print(f"Config written to {config.CONFIG_PATH}")
+    print(f"Config: {config.CONFIG_PATH}")
 
 
 def _cmd_status(svc: SimpleNamespace, slug: str | None) -> None:

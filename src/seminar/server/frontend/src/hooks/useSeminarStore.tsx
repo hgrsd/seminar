@@ -13,6 +13,7 @@ import type {
   ActivityEvent,
   Idea,
   Proposal,
+  Settings,
   SnapshotState,
   Worker,
   WSMessage,
@@ -49,6 +50,9 @@ interface SeminarActions {
   killWorkerTask: (workerId: number) => Promise<void>;
   pause: () => Promise<void>;
   resume: () => Promise<void>;
+  getSettings: (signal?: AbortSignal) => Promise<Settings>;
+  updateSettings: (input: Omit<Settings, "available_providers">) => Promise<Settings>;
+  getProviderDefaults: (signal?: AbortSignal) => Promise<Record<string, { default_cmd: string }>>;
 }
 
 const MAX_ACTIVITY = 100;
@@ -283,6 +287,25 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     await apiRequest("/api/resume", { method: "POST" });
   }, []);
 
+  const getSettings = useCallback(async (signal?: AbortSignal) => {
+    const response = await apiRequest("/api/settings", { signal });
+    return response.json() as Promise<Settings>;
+  }, []);
+
+  const updateSettings = useCallback(async (input: Omit<Settings, "available_providers">) => {
+    const response = await apiRequest("/api/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+    return response.json() as Promise<Settings>;
+  }, []);
+
+  const getProviderDefaults = useCallback(async (signal?: AbortSignal) => {
+    const response = await apiRequest("/api/providers", { signal });
+    return response.json() as Promise<Record<string, { default_cmd: string }>>;
+  }, []);
+
   const actions = useMemo<SeminarActions>(() => ({
     createIdea,
     markIdeaDone,
@@ -298,6 +321,9 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     killWorkerTask,
     pause,
     resume,
+    getSettings,
+    updateSettings,
+    getProviderDefaults,
   }), [
     addDirectorNote,
     approveProposal,
@@ -313,6 +339,9 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     resetIdea,
     resume,
     spawnWorker,
+    getSettings,
+    updateSettings,
+    getProviderDefaults,
   ]);
 
   const stateValue = useMemo(

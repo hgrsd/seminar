@@ -12,6 +12,7 @@ import { ReadingPane } from "./components/ReadingPane";
 import { ActivityDrawer } from "./components/ActivityDrawer";
 import { WorkerScreen } from "./components/WorkerScreen";
 import { NewIdeaModal } from "./components/NewIdeaModal";
+import { SettingsModal } from "./components/SettingsModal";
 import type { NavigationTarget } from "./types";
 import "./App.css";
 
@@ -29,6 +30,7 @@ export default function App() {
   const [workerScreenOpen, setWorkerScreenOpen] = useState(false);
   const [initialWorkerId, setInitialWorkerId] = useState<number | null>(null);
   const [showNewIdea, setShowNewIdea] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
 
@@ -104,6 +106,7 @@ export default function App() {
         onWorkersClick={() => { setWorkerScreenOpen((prev) => !prev); setInitialWorkerId(null); }}
         onSpawnWorker={handleSpawnWorker}
         onNewIdea={() => setShowNewIdea(true)}
+        onOpenSettings={() => setShowSettings(true)}
         onNavigate={navigateTo}
       />
 
@@ -164,6 +167,9 @@ export default function App() {
 
       {showNewIdea && (
         <NewIdeaModal onClose={() => setShowNewIdea(false)} />
+      )}
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
       )}
     </div>
   );

@@ -94,7 +94,6 @@ class WorkerPool:
                 state,
                 self._shutdown,
                 self._wake,
-                worker.interval,
                 self.on_worker_state,
             ),
             name=f"worker-{wid}",
@@ -143,7 +142,6 @@ async def _worker_loop(
     state: WorkerState,
     shutdown: asyncio.Event,
     wake: asyncio.Event,
-    interval: float,
     on_state_change: WorkerStateCallback | None,
 ) -> None:
     while not shutdown.is_set():
@@ -158,7 +156,7 @@ async def _worker_loop(
         state.reset()
         if on_state_change:
             on_state_change(state)
-        await _interruptible_sleep(shutdown, wake, interval)
+        await _interruptible_sleep(shutdown, wake, state.worker_type.interval)
 
 
 async def _interruptible_sleep(

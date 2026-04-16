@@ -8,6 +8,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Callable
 
+from seminar import providers
 from seminar.providers import Provider
 from seminar.providers.types import LogEvent
 from seminar.service.types import WorkerRun
@@ -29,8 +30,13 @@ class RunService:
     ):
         self.logs_dir = logs_dir
         self.provider = provider
+        self.provider_name = providers.provider_name(provider)
         self.connect = connect
         self.on_run_updated = on_run_updated
+
+    def set_provider(self, provider_name: str, provider: Provider) -> None:
+        self.provider_name = provider_name
+        self.provider = provider
 
     def start(
         self,
@@ -45,7 +51,7 @@ class RunService:
         with self.connect() as conn:
             cursor = conn.execute(
                 "INSERT INTO worker_runs (worker_id, worker_type, provider, slug, study_number, started_at, log_file) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (worker_id, run_type.value, type(self.provider).__name__, slug, study_number, now, log_file),
+                (worker_id, run_type.value, self.provider_name, slug, study_number, now, log_file),
             )
             conn.commit()
             return cursor.lastrowid
@@ -62,13 +68,19 @@ class RunService:
         now = datetime.now(timezone.utc).isoformat()
 
         with self.connect() as conn:
-            row = conn.execute("SELECT log_file FROM worker_runs WHERE id = ?", (run_id,)).fetchone()
+            row = conn.execute(
+                "SELECT provider, log_file FROM worker_runs WHERE id = ?",
+                (run_id,),
+            ).fetchone()
         log_file = row["log_file"] if row else None
+        provider = self.provider
+        if row and row["provider"]:
+            provider = providers.load(row["provider"])
 
         log_result = None
         if log_file and self.logs_dir:
             log_path = self.logs_dir / log_file
-            log_result = self.provider.extract_log_result(log_path)
+            log_result = provider.extract_log_result(log_path)
 
         with self.connect() as conn:
             conn.execute(
@@ -170,11 +182,25 @@ class RunService:
         log_path = self.logs_dir / filename
         if not log_path.exists():
             return None
+        with self.connect() as conn:
+            row = conn.execute(
+                """
+                SELECT provider
+                FROM worker_runs
+                WHERE worker_id = ? AND log_file = ?
+                ORDER BY started_at DESC
+                LIMIT 1
+                """,
+                (worker_id, filename),
+            ).fetchone()
+        provider = self.provider
+        if row and row["provider"]:
+            provider = providers.load(row["provider"])
         raw = log_path.read_text()
         lines = raw.splitlines()
         if len(lines) > 500:
             raw = "\n".join(lines[-500:])
-        return self.provider.parse_log(raw)
+        return provider.parse_log(raw)
 
     def session_cost(self, since: str) -> float:
         """Return total cost in USD for runs started since the given ISO timestamp."""
