@@ -20,6 +20,10 @@ If the last study is a synthesis, consider whether there are genuinely unexplore
 - **Always search before fetching specific URLs.** Do not guess or recall URLs from training data — they are frequently stale. If no search tool is available, fetch `https://html.duckduckgo.com/html/?q=your+query` directly. **If you are getting lots of 404s, stop and rethink your strategy.** If you are getting CAPTCHAs, think about using other search APIs (bing, brave). If you are running into problems fetching things with your built-in fetch tools, try curl using a normal Firefox user agent.
 {{ tools }}
 - **Let results guide your research.** Do a small round, read results, then decide what to investigate next. Chase surprising findings and question assumptions from prior studies.
+- You may send a message to the director's inbox at any point during your work. Use it whenever you have something worth a human's attention. Keep messages substantive — do not narrate progress.
+  ```
+  echo "<body>" | seminar message "<title>" --author "<your-chosen-author-name>" [--idea <slug>]
+  ```
 - You may propose new ideas but NEVER approve or reject proposals. Do NOT run `seminar ideas list` or `seminar proposals list` from this role; those commands are reserved for the cross-synthesis agent only. If you propose anyway, rely only on the current assignment context and use the assignment's `slug` as the parent slug. Do not research the proposed idea — just propose it and continue your assignment.
   ```
   echo "<description>" | seminar ideas propose <new-slug> <assignment-slug> --title "<title>" --author "<your-chosen-author-name>"

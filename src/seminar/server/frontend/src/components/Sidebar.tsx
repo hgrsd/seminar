@@ -1,14 +1,16 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
-import type { Idea, Worker, StudyFile, Proposal, NavigationTarget } from "../types";
+import type { Idea, Worker, StudyFile, Proposal, Message, NavigationTarget } from "../types";
 import { stateGroup, WORKER_TYPE_COLORS } from "../utils";
 
 interface Props {
   ideas: Idea[];
   proposals: Proposal[];
+  messages: Message[];
   activeWorkers: Map<string, Worker>;
   selectedSlug: string | null;
   selectedStudy: number | null;
   selectedProposal: string | null;
+  selectedMessage: number | null;
   studyCounts: Record<string, number>;
   studiesCache: Record<string, StudyFile[]>;
   fetchStudies: (slug: string) => void;
@@ -27,7 +29,7 @@ const SECTIONS: SectionConfig[] = [
   { key: "done", label: "Well-understood" },
 ];
 
-const ALL_SECTION_KEYS = ["proposed", "not_started", "active", "done", "rejected"];
+const ALL_SECTION_KEYS = ["inbox", "not_started", "active", "done"];
 
 type SortField = "name" | "created" | "activity";
 type SortDir = "asc" | "desc";
@@ -54,8 +56,8 @@ function sortIdeas(ideas: Idea[], sort: SortState, activeSlugs: Set<string>): Id
   return [...ideas].sort((a, b) => flip * compareIdeas(a, b, sort.field, activeSlugs));
 }
 
-export function Sidebar({ ideas, proposals, activeWorkers, selectedSlug, selectedStudy, selectedProposal, studyCounts, studiesCache, fetchStudies, onNavigate, onCollapse }: Props) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ proposed: true, not_started: true, active: true, done: true, rejected: true });
+export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlug, selectedStudy, selectedProposal, selectedMessage, studyCounts, studiesCache, fetchStudies, onNavigate, onCollapse }: Props) {
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({ inbox: true, not_started: true, active: true, done: true });
   const [expandedIdeas, setExpandedIdeas] = useState<Record<string, boolean>>({});
   const [sort, setSort] = useState<SortState>({ field: "name", dir: "asc" });
 
@@ -146,33 +148,56 @@ export function Sidebar({ ideas, proposals, activeWorkers, selectedSlug, selecte
       </div>
 
       <div className="sidebar-sections">
-        {/* Proposed */}
+        {/* Inbox: pending proposals + unread messages */}
         {(() => {
-          const items = proposals.filter((p) => p.status === "pending");
-          const isCollapsed = collapsed["proposed"] ?? false;
+          const pendingProposals = proposals.filter((p) => p.status === "pending");
+          const unreadMessages = messages.filter((m) => m.status === "unread");
+          const inboxCount = pendingProposals.length + unreadMessages.length;
+          const isCollapsed = collapsed["inbox"] ?? false;
+
+          type InboxItem =
+            | { kind: "proposal"; recorded_at: string; proposal: Proposal }
+            | { kind: "message"; recorded_at: string; message: Message };
+
+          const inboxItems: InboxItem[] = [
+            ...pendingProposals.map((p) => ({ kind: "proposal" as const, recorded_at: p.recorded_at, proposal: p })),
+            ...unreadMessages.map((m) => ({ kind: "message" as const, recorded_at: m.recorded_at, message: m })),
+          ].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
+
           return (
             <div className="sidebar-section">
               <button
-                className={`sidebar-section-header ${items.length === 0 ? "sidebar-section-header--empty" : ""}`}
-                onClick={() => items.length > 0 && toggleSection("proposed")}
+                className={`sidebar-section-header ${inboxCount === 0 ? "sidebar-section-header--empty" : ""}`}
+                onClick={() => inboxCount > 0 && toggleSection("inbox")}
               >
                 <span className="sidebar-section-arrow">
-                  {items.length === 0 ? "" : isCollapsed ? "\u25B8" : "\u25BE"}
+                  {inboxCount === 0 ? "" : isCollapsed ? "\u25B8" : "\u25BE"}
                 </span>
-                <span className="sidebar-section-label">Proposed</span>
-                <span className={`sidebar-section-count ${items.length > 0 ? "sidebar-section-count--proposed" : ""}`}>{items.length}</span>
+                <span className="sidebar-section-label">Inbox</span>
+                <span className={`sidebar-section-count ${inboxCount > 0 ? "sidebar-section-count--inbox" : ""}`}>{inboxCount}</span>
               </button>
               {!isCollapsed && (
                 <div className="sidebar-section-items">
-                  {items.map((p) => (
+                  {inboxItems.map((item) => item.kind === "proposal" ? (
                     <button
-                      key={p.slug}
-                      id={`sidebar-proposal-${p.slug}`}
-                      className={`sidebar-item ${p.slug === selectedProposal ? "sidebar-item--selected" : ""}`}
-                      onClick={() => onNavigate({ type: "proposal", slug: p.slug })}
+                      key={`proposal-${item.proposal.slug}`}
+                      id={`sidebar-proposal-${item.proposal.slug}`}
+                      className={`sidebar-item ${item.proposal.slug === selectedProposal ? "sidebar-item--selected" : ""}`}
+                      onClick={() => onNavigate({ type: "proposal", slug: item.proposal.slug })}
                     >
                       <span className="sidebar-item-dot" />
-                      <span className="sidebar-item-name">{p.title}</span>
+                      <span className="sidebar-item-name">{item.proposal.title}</span>
+                      <span className="state-badge">proposal</span>
+                    </button>
+                  ) : (
+                    <button
+                      key={`message-${item.message.id}`}
+                      id={`sidebar-message-${item.message.id}`}
+                      className={`sidebar-item ${item.message.id === selectedMessage ? "sidebar-item--selected" : ""}`}
+                      onClick={() => onNavigate({ type: "message", id: item.message.id })}
+                    >
+                      <span className="sidebar-item-dot" />
+                      <span className="sidebar-item-name">{item.message.title}</span>
                     </button>
                   ))}
                 </div>
@@ -247,40 +272,6 @@ export function Sidebar({ ideas, proposals, activeWorkers, selectedSlug, selecte
           );
         })}
 
-        {/* Rejected */}
-        {(() => {
-          const items = proposals.filter((p) => p.status === "rejected");
-          const isCollapsed = collapsed["rejected"] ?? false;
-          return (
-            <div className="sidebar-section">
-              <button
-                className={`sidebar-section-header ${items.length === 0 ? "sidebar-section-header--empty" : ""}`}
-                onClick={() => items.length > 0 && toggleSection("rejected")}
-              >
-                <span className="sidebar-section-arrow">
-                  {items.length === 0 ? "" : isCollapsed ? "\u25B8" : "\u25BE"}
-                </span>
-                <span className="sidebar-section-label">Rejected</span>
-                <span className="sidebar-section-count">{items.length}</span>
-              </button>
-              {!isCollapsed && (
-                <div className="sidebar-section-items">
-                  {items.map((p) => (
-                    <button
-                      key={p.slug}
-                      id={`sidebar-proposal-${p.slug}`}
-                      className={`sidebar-item ${p.slug === selectedProposal ? "sidebar-item--selected" : ""}`}
-                      onClick={() => onNavigate({ type: "proposal", slug: p.slug })}
-                    >
-                      <span className="sidebar-item-dot" />
-                      <span className="sidebar-item-name">{p.title}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })()}
       </div>
       <div className="sidebar-bottom">
         <button

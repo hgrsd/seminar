@@ -132,6 +132,26 @@ class ProposalContent:
     meta: IdeaMeta
 
 
+# --- Messages ---
+
+
+@dataclass
+class MessageSummary:
+    id: int
+    recorded_at: str
+    title: str
+    author: str
+    status: str
+    idea_slug: str | None
+    description: str
+
+
+@dataclass
+class MessageContent:
+    content: str
+    meta: IdeaMeta
+
+
 # --- Runs ---
 
 

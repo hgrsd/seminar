@@ -13,10 +13,11 @@ from fastapi.staticfiles import StaticFiles
 
 from seminar import config, db, providers, service
 from seminar.server.broadcast import BroadcastHub
-from seminar.server.routers import annotations, ideas, proposals, studies, system, workers
+from seminar.server.routers import annotations, ideas, messages, proposals, studies, system, workers
 from seminar.service.annotations import AnnotationService
 from seminar.service.ideas import IdeaService
 from seminar.service.initial_expectations import InitialExpectationService
+from seminar.service.messages import MessageService
 from seminar.service.proposals import ProposalService
 from seminar.service.runs import RunService
 from seminar.service.search import SearchService
@@ -76,6 +77,7 @@ async def lifespan(app: FastAPI):
     app.state.idea_service = IdeaService(cfg.scratch_dir, connect)
     app.state.initial_expectation_service = InitialExpectationService(connect)
     app.state.study_service = StudyService(cfg.scratch_dir, cfg.follow_up_research_cooldown_minutes, connect)
+    app.state.message_service = MessageService(connect)
     app.state.proposal_service = ProposalService(connect)
     app.state.search_service = SearchService(connect)
     app.state.run_service = RunService(cfg.logs_dir, provider, connect)
@@ -131,6 +133,7 @@ def _snapshot_payload(app: FastAPI) -> dict:
         "activity": app.state.hub.activities,
         "study_counts": app.state.study_service.counts(),
         "proposals": [asdict(p) for p in app.state.proposal_service.list_all()],
+        "messages": [asdict(m) for m in app.state.message_service.list_all()],
         "paused": service.is_paused(),
         "session_cost": app.state.run_service.session_cost(app.state.started_at),
     }
@@ -140,6 +143,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.include_router(annotations.router)
 app.include_router(ideas.router)
+app.include_router(messages.router)
 app.include_router(proposals.router)
 app.include_router(studies.router)
 app.include_router(workers.router)

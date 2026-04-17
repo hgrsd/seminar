@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback, isValidElement, type ReactNode, type ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { Idea, StudyFile, Worker, Proposal, NavigationTarget, InitialExpectation } from "../types";
+import type { Idea, StudyFile, Worker, Proposal, Message, NavigationTarget, InitialExpectation } from "../types";
 import { useIdeas } from "../hooks/useIdeas";
 import { useProposals } from "../hooks/useProposals";
+import { useMessages } from "../hooks/useMessages";
 import { useStudyAnnotations } from "../hooks/useStudyAnnotations";
 import { relativeTime, workerTypeLabel, studyModeLabel, WORKER_TYPE_COLORS } from "../utils";
 import { StudyCard } from "./StudyCard";
@@ -127,6 +128,7 @@ function TableOfContents({ entries, scrollRef }: { entries: TocEntry[]; scrollRe
 interface Props {
   idea: Idea | null;
   selectedProposal: Proposal | null;
+  selectedMessage: Message | null;
   activeWorkers: Map<string, Worker>;
   onWorkerClick: (workerId: number) => void;
   selectedStudy: number | null;
@@ -153,7 +155,7 @@ const STATE_CLASSES: Record<string, string> = {
   done: "state-badge--done",
 };
 
-export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerClick, selectedStudy, scrollToAnnotationId, onScrollToAnnotationHandled, studiesCache, fetchStudies, onNavigate, onClose }: Props) {
+export function ReadingPane({ idea, selectedProposal, selectedMessage, activeWorkers, onWorkerClick, selectedStudy, scrollToAnnotationId, onScrollToAnnotationHandled, studiesCache, fetchStudies, onNavigate, onClose }: Props) {
   const {
     markIdeaDone,
     reopenIdea,
@@ -162,6 +164,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
     addDirectorNote,
   } = useIdeas();
   const { approveProposal, rejectProposal, deleteProposal } = useProposals();
+  const { getMessageContent, markMessageRead, deleteMessage } = useMessages();
   const [content, setContent] = useState<string | null>(null);
   const [title, setTitle] = useState<string | null>(null);
   const [meta, setMeta] = useState<Record<string, string> | null>(null);
@@ -170,6 +173,9 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
   const [confirmDeleteProposal, setConfirmDeleteProposal] = useState(false);
+  const [confirmDeleteMessage, setConfirmDeleteMessage] = useState(false);
+  const [messageContent, setMessageContent] = useState<string | null>(null);
+  const [messageLoading, setMessageLoading] = useState(false);
   const [proposalContent, setProposalContent] = useState<string | null>(null);
   const [proposalMeta, setProposalMeta] = useState<Record<string, string> | null>(null);
   const [proposalLoading, setProposalLoading] = useState(false);
@@ -267,6 +273,24 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
   }, [selectedProposal?.slug]);
 
   useEffect(() => {
+    if (!selectedMessage) {
+      setMessageContent(null);
+      return;
+    }
+    setMessageLoading(true);
+    setMessageContent(null);
+    setConfirmDeleteMessage(false);
+    const controller = new AbortController();
+    getMessageContent(selectedMessage.id, controller.signal)
+      .then((data) => {
+        setMessageContent(data.content ?? null);
+        setMessageLoading(false);
+      })
+      .catch(() => setMessageLoading(false));
+    return () => controller.abort();
+  }, [selectedMessage?.id]);
+
+  useEffect(() => {
     scrollRef.current?.scrollTo(0, 0);
   }, [selectedStudy]);
 
@@ -305,6 +329,74 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
     scrollToAnnotationId,
     onScrollToAnnotationHandled,
   );
+
+  if (selectedMessage) {
+    const handleMarkRead = () => {
+      void markMessageRead(selectedMessage.id);
+    };
+    const handleDeleteMessage = () => {
+      if (!confirmDeleteMessage) {
+        setConfirmDeleteMessage(true);
+        return;
+      }
+      void deleteMessage(selectedMessage.id);
+      setConfirmDeleteMessage(false);
+      onClose();
+    };
+
+    return (
+      <main className="reading-pane">
+        <div className="reading-pane-scroll" ref={scrollRef}>
+          <button className="icon-btn reading-pane-close" onClick={onClose} title="Close">&times;</button>
+          <article className="reading-pane-content">
+            <header className="reading-pane-header">
+              <h1 className="reading-pane-title">{selectedMessage.title}</h1>
+              <div className="reading-pane-meta">
+                <span className="reading-pane-byline">
+                  {selectedMessage.author}
+                  {selectedMessage.recorded_at && <> · {relativeTime(selectedMessage.recorded_at)}</>}
+                </span>
+              </div>
+            </header>
+
+            {selectedMessage.idea_slug && (
+              <div className="pedigree">
+                <div className="pedigree-group">
+                  <span className="pedigree-label">About</span>
+                  <button className="pedigree-link" onClick={() => onNavigate({ type: "idea", slug: selectedMessage.idea_slug! })}>
+                    {selectedMessage.idea_slug}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {messageLoading && <div className="reading-pane-loading">Loading...</div>}
+
+            {!messageLoading && messageContent && (
+              <div className="prose">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{messageContent}</ReactMarkdown>
+              </div>
+            )}
+
+            {!messageLoading && (
+              <footer className="reading-pane-actions">
+                <div className="action-buttons">
+                  {selectedMessage.status === "unread" && (
+                    <button className="action-btn btn--primary" onClick={handleMarkRead}>
+                      Mark Read
+                    </button>
+                  )}
+                  <button className="action-btn" onClick={handleDeleteMessage}>
+                    {confirmDeleteMessage ? "Confirm Delete" : "Delete"}
+                  </button>
+                </div>
+              </footer>
+            )}
+          </article>
+        </div>
+      </main>
+    );
+  }
 
   if (selectedProposal) {
     const handleApprove = () => {

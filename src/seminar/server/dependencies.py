@@ -7,6 +7,7 @@ from seminar.server.broadcast import BroadcastHub
 from seminar.service.annotations import AnnotationService
 from seminar.service.ideas import IdeaService
 from seminar.service.initial_expectations import InitialExpectationService
+from seminar.service.messages import MessageService
 from seminar.service.proposals import ProposalService
 from seminar.service.runs import RunService
 from seminar.service.search import SearchService
@@ -32,6 +33,10 @@ def get_initial_expectation_service(request: Request) -> InitialExpectationServi
 
 def get_study_service(request: Request) -> StudyService:
     return request.app.state.study_service
+
+
+def get_message_service(request: Request) -> MessageService:
+    return request.app.state.message_service
 
 
 def get_proposal_service(request: Request) -> ProposalService:

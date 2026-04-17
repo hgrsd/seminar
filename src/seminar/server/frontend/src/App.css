@@ -2169,14 +2169,14 @@ textarea {
   background: var(--text-muted);
 }
 
-/* ─── Proposals ───────────────────────────────────────── */
+/* ─── Inbox ───────────────────────────────────────────── */
 
-.sidebar-section-count--proposed {
+.sidebar-section-count--inbox {
   background: var(--gold);
   color: var(--on-accent);
 }
 
-.state-badge--proposed {
+.state-badge--inbox {
   background: var(--gold-tint);
   color: var(--gold);
 }

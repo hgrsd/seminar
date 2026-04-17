@@ -3,6 +3,7 @@ import { useStudies } from "./hooks/useStudies";
 import { useActiveWorkers } from "./hooks/useActiveWorkers";
 import { useIdeas } from "./hooks/useIdeas";
 import { useProposals } from "./hooks/useProposals";
+import { useMessages } from "./hooks/useMessages";
 import { useWorkers } from "./hooks/useWorkers";
 import { useSystemState } from "./hooks/useSystemState";
 import { useActivity } from "./hooks/useActivity";
@@ -20,6 +21,7 @@ export default function App() {
   const { ideas, studyCounts } = useIdeas();
   const { workers, spawnWorker, removeWorker, killWorkerTask } = useWorkers();
   const { proposals } = useProposals();
+  const { messages } = useMessages();
   const { paused, sessionCost, pause, resume } = useSystemState();
   const { activity } = useActivity();
   const { studiesCache, fetchStudies } = useStudies(studyCounts);
@@ -27,6 +29,7 @@ export default function App() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [selectedStudy, setSelectedStudy] = useState<number | null>(null);
   const [selectedProposal, setSelectedProposal] = useState<string | null>(null);
+  const [selectedMessage, setSelectedMessage] = useState<number | null>(null);
   const [scrollToAnnotationId, setScrollToAnnotationId] = useState<number | null>(null);
   const [workerScreenOpen, setWorkerScreenOpen] = useState(false);
   const [initialWorkerId, setInitialWorkerId] = useState<number | null>(null);
@@ -63,16 +66,26 @@ export default function App() {
         setSelectedSlug(target.slug);
         setSelectedStudy(null);
         setSelectedProposal(null);
+        setSelectedMessage(null);
         setScrollToAnnotationId(null);
         break;
       case "study":
         setSelectedSlug(target.slug);
         setSelectedStudy(target.study_number);
         setSelectedProposal(null);
+        setSelectedMessage(null);
         setScrollToAnnotationId(null);
         break;
       case "proposal":
         setSelectedProposal(target.slug);
+        setSelectedSlug(null);
+        setSelectedStudy(null);
+        setSelectedMessage(null);
+        setScrollToAnnotationId(null);
+        break;
+      case "message":
+        setSelectedMessage(target.id);
+        setSelectedProposal(null);
         setSelectedSlug(null);
         setSelectedStudy(null);
         setScrollToAnnotationId(null);
@@ -125,10 +138,12 @@ export default function App() {
           <Sidebar
             ideas={ideas}
             proposals={proposals}
+            messages={messages}
             activeWorkers={activeWorkers}
             selectedSlug={selectedSlug}
             selectedStudy={selectedStudy}
             selectedProposal={selectedProposal}
+            selectedMessage={selectedMessage}
             studyCounts={studyCounts}
             studiesCache={studiesCache}
             fetchStudies={fetchStudies}
@@ -162,6 +177,7 @@ export default function App() {
           <ReadingPane
             idea={selectedIdea}
             selectedProposal={selectedProposal ? proposals.find((p) => p.slug === selectedProposal) ?? null : null}
+            selectedMessage={selectedMessage ? messages.find((m) => m.id === selectedMessage) ?? null : null}
             activeWorkers={activeWorkers}
             onWorkerClick={(workerId) => { setInitialWorkerId(workerId); setWorkerScreenOpen(true); }}
             selectedStudy={selectedStudy}
@@ -174,6 +190,7 @@ export default function App() {
               setSelectedSlug(null);
               setSelectedStudy(null);
               setSelectedProposal(null);
+              setSelectedMessage(null);
               setScrollToAnnotationId(null);
             }}
           />

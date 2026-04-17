@@ -95,6 +95,12 @@ def main(argv: list[str] | None = None) -> None:
     studies_read_p.add_argument("slug")
     studies_read_p.add_argument("study_number", type=int)
 
+    # message (agent-facing)
+    message_p = sub.add_parser("message", help="Send a message to the director inbox")
+    message_p.add_argument("title", help="Message title")
+    message_p.add_argument("--idea", default=None, help="Idea slug this message relates to")
+    message_p.add_argument("--author", required=True, help="Author name")
+
     # pause / resume
     sub.add_parser("pause", help="Pause the worker fleet")
     sub.add_parser("resume", help="Resume the worker fleet")
@@ -149,6 +155,7 @@ def main(argv: list[str] | None = None) -> None:
         "proposals": lambda: _cmd_proposals(_svc(), args),
         "studies": lambda: _cmd_studies(_svc(), args),
         "uninstall": _cmd_uninstall,
+        "message": lambda: _cmd_send_message(args.title, args.idea, args.author),
         "claim-new": _cmd_claim_new,
         "claim-further": _cmd_claim_further,
         "complete-study": lambda: _cmd_complete_study(
@@ -265,6 +272,19 @@ def _cmd_propose_idea(
     )
     canonical = result["slug"]
     print(canonical)
+
+
+def _cmd_send_message(title: str, idea_slug: str | None, author: str) -> None:
+    body = sys.stdin.read()
+    if not body.strip():
+        print("Error: message body must be provided via stdin.", file=sys.stderr)
+        sys.exit(1)
+    result = _api_request(
+        "POST",
+        "/api/messages",
+        {"title": title, "body": body, "idea_slug": idea_slug, "author": author},
+    )
+    print(result.get("id", ""))
 
 
 def _cmd_proposals(svc: SimpleNamespace, args) -> None:

@@ -35,6 +35,16 @@ export interface Proposal {
   description: string;
 }
 
+export interface Message {
+  id: number;
+  recorded_at: string;
+  title: string;
+  author: string;
+  status: "unread" | "read";
+  idea_slug: string | null;
+  description: string;
+}
+
 export interface StudyFile {
   title: string;
   mode: string;
@@ -111,6 +121,7 @@ export type NavigationTarget =
   | { type: "idea"; slug: string }
   | { type: "study"; slug: string; study_number: number }
   | { type: "proposal"; slug: string }
+  | { type: "message"; id: number }
   | { type: "annotation"; slug: string; study_number: number; annotation_id: number };
 
 export interface SnapshotState {
@@ -119,6 +130,7 @@ export interface SnapshotState {
   activity: ActivityEvent[];
   study_counts: Record<string, number>;
   proposals: Proposal[];
+  messages: Message[];
   paused: boolean;
   session_cost: number;
 }
@@ -158,4 +170,6 @@ export type WSMessage =
   | { type: "study_count_updated"; data: { slug: string; count: number } }
   | { type: "study_counts_replaced"; data: Record<string, number> }
   | { type: "paused_changed"; data: boolean }
-  | { type: "session_cost_changed"; data: number };
+  | { type: "session_cost_changed"; data: number }
+  | { type: "message_upserted"; data: Message }
+  | { type: "message_deleted"; data: { id: number } };

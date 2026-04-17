@@ -12,6 +12,7 @@ import {
 import type {
   ActivityEvent,
   Idea,
+  Message,
   Proposal,
   Settings,
   SnapshotState,
@@ -25,6 +26,7 @@ interface SeminarState {
   activity: ActivityEvent[];
   studyCounts: Record<string, number>;
   proposals: Proposal[];
+  messages: Message[];
   paused: boolean;
   sessionCost: number;
   connected: boolean;
@@ -46,6 +48,9 @@ interface SeminarActions {
   approveProposal: (slug: string) => Promise<void>;
   rejectProposal: (slug: string) => Promise<void>;
   deleteProposal: (slug: string) => Promise<void>;
+  getMessageContent: (id: number, signal?: AbortSignal) => Promise<{ content: string; meta: { title: string; author: string } }>;
+  markMessageRead: (id: number) => Promise<void>;
+  deleteMessage: (id: number) => Promise<void>;
   spawnWorker: (type: "initial_exploration" | "follow_up_research" | "connective_research") => Promise<void>;
   removeWorker: (workerId: number) => Promise<void>;
   killWorkerTask: (workerId: number) => Promise<void>;
@@ -64,6 +69,7 @@ const initialState: SeminarState = {
   activity: [],
   studyCounts: {},
   proposals: [],
+  messages: [],
   paused: true,
   sessionCost: 0,
   connected: false,
@@ -88,6 +94,10 @@ function sortProposals(proposals: Proposal[]): Proposal[] {
   return [...proposals].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
 }
 
+function sortMessages(messages: Message[]): Message[] {
+  return [...messages].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
+}
+
 function sortWorkers(workers: Worker[]): Worker[] {
   return [...workers].sort((a, b) => a.id - b.id);
 }
@@ -99,6 +109,7 @@ function fromSnapshot(snapshot: SnapshotState, connected: boolean): SeminarState
     activity: snapshot.activity,
     studyCounts: snapshot.study_counts,
     proposals: sortProposals(snapshot.proposals),
+    messages: sortMessages(snapshot.messages),
     paused: snapshot.paused,
     sessionCost: snapshot.session_cost,
     connected,
@@ -133,6 +144,16 @@ function reduceState(state: SeminarState, msg: WSMessage): SeminarState {
       return {
         ...state,
         proposals: state.proposals.filter((proposal) => proposal.slug !== msg.data.slug),
+      };
+    case "message_upserted":
+      return {
+        ...state,
+        messages: sortMessages(upsertByKey(state.messages, msg.data, "id")),
+      };
+    case "message_deleted":
+      return {
+        ...state,
+        messages: state.messages.filter((message) => message.id !== msg.data.id),
       };
     case "worker_upserted":
       return {
@@ -271,6 +292,19 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     await apiRequest(`/api/proposals/${slug}`, { method: "DELETE" });
   }, []);
 
+  const getMessageContent = useCallback(async (id: number, signal?: AbortSignal) => {
+    const response = await apiRequest(`/api/messages/${id}/content`, { signal });
+    return response.json() as Promise<{ content: string; meta: { title: string; author: string } }>;
+  }, []);
+
+  const markMessageRead = useCallback(async (id: number) => {
+    await apiRequest(`/api/messages/${id}/mark-read`, { method: "POST" });
+  }, []);
+
+  const deleteMessage = useCallback(async (id: number) => {
+    await apiRequest(`/api/messages/${id}`, { method: "DELETE" });
+  }, []);
+
   const spawnWorker = useCallback(async (type: "initial_exploration" | "follow_up_research" | "connective_research") => {
     await apiRequest("/api/workers", {
       method: "POST",
@@ -324,6 +358,9 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     approveProposal,
     rejectProposal,
     deleteProposal,
+    getMessageContent,
+    markMessageRead,
+    deleteMessage,
     spawnWorker,
     removeWorker,
     killWorkerTask,
@@ -338,6 +375,9 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     createIdea,
     deleteIdea,
     deleteProposal,
+    getMessageContent,
+    markMessageRead,
+    deleteMessage,
     killWorkerTask,
     markIdeaDone,
     pause,
