@@ -4,7 +4,7 @@ import sqlite3
 from dataclasses import asdict
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
 from seminar.server.broadcast import BroadcastHub
@@ -44,6 +44,18 @@ def get_idea_sources(slug: str, ideas: IdeaService = Depends(get_idea_service)):
 @router.get("/ideas/{slug}/children")
 def get_idea_children(slug: str, ideas: IdeaService = Depends(get_idea_service)):
     return ideas.children(slug)
+
+
+@router.get("/ideas/{slug}/export")
+def export_idea(slug: str, ideas: IdeaService = Depends(get_idea_service)):
+    content = ideas.export_markdown(slug)
+    if content is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return PlainTextResponse(
+        content,
+        media_type="text/markdown; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{slug}-export.md"'},
+    )
 
 
 @router.post("/ideas")

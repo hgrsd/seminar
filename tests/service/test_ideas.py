@@ -210,6 +210,86 @@ class IdeaServiceTests(unittest.TestCase):
         self.assertEqual(self._count("SELECT COUNT(*) FROM proposal_sources WHERE source_slug = ?", ("topic",)), 0)
         self.assertFalse(scratch_topic.exists())
 
+    def test_export_markdown_bundles_metadata_lineage_and_completed_studies(self) -> None:
+        self._insert_idea(
+            "topic",
+            "2024-01-03T00:00:00Z",
+            title="Topic",
+            author="Ada",
+            body="Idea body",
+            current_state=IdeaState.FOLLOW_UP_RESEARCH,
+            last_studied="2024-01-05T00:00:00Z",
+        )
+        self._insert_idea("parent", "2024-01-01T00:00:00Z", title="Parent")
+        self._insert_idea("child", "2024-01-04T00:00:00Z", title="Child")
+        with db.connect() as conn:
+            conn.execute(
+                "INSERT INTO idea_sources (slug, source_slug) VALUES (?, ?)",
+                ("topic", "parent"),
+            )
+            conn.execute(
+                "INSERT INTO idea_sources (slug, source_slug) VALUES (?, ?)",
+                ("child", "topic"),
+            )
+            conn.commit()
+        self._insert_study(
+            "topic",
+            1,
+            started_at="2024-01-03T01:00:00Z",
+            completed_at="2024-01-03T02:00:00Z",
+            mode="initial_exploration",
+            title="First Look",
+            body="## Abstract\n\nStudy body",
+        )
+        self._insert_study(
+            "topic",
+            2,
+            started_at="2024-01-04T01:00:00Z",
+            mode="follow_up_research",
+            title="In Progress",
+            body="Draft body",
+        )
+
+        exported = self._idea_service().export_markdown("topic")
+
+        self.assertEqual(
+            exported,
+            """# Topic
+
+## Metadata
+
+- **Slug:** `topic`
+- **Recorded:** 2024-01-03T00:00:00Z
+- **Author:** Ada
+- **State:** follow_up_research
+- **Last studied:** 2024-01-05T00:00:00Z
+- **Completed studies:** 1
+
+## Lineage
+
+**Derived from**
+
+- Parent (`parent`)
+
+**Spawned ideas**
+
+- Child (`child`)
+
+## Idea
+
+Idea body
+
+## Study #1: First Look
+
+- **Mode:** initial_exploration
+- **Completed:** 2024-01-03T02:00:00Z
+
+### Abstract
+
+Study body
+""",
+        )
+
     def _insert_idea(
         self,
         slug: str,
@@ -251,15 +331,16 @@ class IdeaServiceTests(unittest.TestCase):
         mode: str,
         completed_at: str | None = None,
         title: str | None = None,
+        body: str | None = None,
     ) -> None:
         with db.connect() as conn:
             conn.execute(
                 """
                 INSERT INTO studies (
-                    idea_slug, study_number, started_at, completed_at, mode, title
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    idea_slug, study_number, started_at, completed_at, mode, title, body
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (slug, study_number, started_at, completed_at, mode, title),
+                (slug, study_number, started_at, completed_at, mode, title, body),
             )
             conn.commit()
 

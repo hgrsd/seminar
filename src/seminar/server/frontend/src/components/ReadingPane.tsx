@@ -174,6 +174,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
   const [children, setChildren] = useState<{ slug: string; title: string }[]>([]);
   const [noteText, setNoteText] = useState("");
   const [noteSubmitting, setNoteSubmitting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const deleteBtnRef = useRef<HTMLButtonElement>(null);
   const deleteProposalBtnRef = useRef<HTMLButtonElement>(null);
   const resetBtnRef = useRef<HTMLButtonElement>(null);
@@ -444,6 +445,29 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
     onClose();
   };
 
+  const handleExport = () => {
+    setExporting(true);
+    fetch(`/api/ideas/${idea.slug}/export`)
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`Export failed with status ${response.status}`);
+        }
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${idea.slug}-export.md`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+      })
+      .catch((error) => {
+        console.error(error);
+      })
+      .finally(() => setExporting(false));
+  };
+
   const activeWorker = activeWorkers.get(idea.slug) ?? null;
 
   return (
@@ -569,6 +593,13 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
           {!loading && (
             <footer className="reading-pane-actions">
               <div className="action-buttons">
+                <button
+                  className="action-btn action-btn--export"
+                  onClick={handleExport}
+                  disabled={exporting}
+                >
+                  {exporting ? "Exporting..." : "Export"}
+                </button>
                 {idea.current_state === "done" ? (
                   <button
                     className="action-btn action-btn--reopen"

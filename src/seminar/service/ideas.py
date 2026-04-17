@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
+from seminar.markdown import shift_headings
 from seminar.service import IdeaState, now, validate_slug
 from seminar.service.types import (
     IdeaContent,
@@ -171,6 +172,91 @@ class IdeaService:
                 (slug,),
             ).fetchall()
         return [IdeaRef(slug=r["slug"], title=r["title"]) for r in rows]
+
+    def export_markdown(self, slug: str) -> str | None:
+        """Return a bundled Markdown export of an idea and its completed studies."""
+        with self.connect() as conn:
+            idea = conn.execute(
+                "SELECT slug, recorded_at, last_studied, current_state, title, author, body FROM ideas WHERE slug = ?",
+                (slug,),
+            ).fetchone()
+            if idea is None:
+                return None
+            sources = conn.execute(
+                "SELECT i.slug, i.title FROM idea_sources s JOIN ideas i ON i.slug = s.source_slug WHERE s.slug = ? ORDER BY i.recorded_at",
+                (slug,),
+            ).fetchall()
+            children = conn.execute(
+                "SELECT i.slug, i.title FROM idea_sources s JOIN ideas i ON i.slug = s.slug WHERE s.source_slug = ? ORDER BY i.recorded_at",
+                (slug,),
+            ).fetchall()
+            studies = conn.execute(
+                "SELECT study_number, mode, title, body, completed_at, started_at "
+                "FROM studies WHERE idea_slug = ? AND completed_at IS NOT NULL ORDER BY study_number",
+                (slug,),
+            ).fetchall()
+
+        lines = [f"# {idea['title'] or idea['slug']}", ""]
+
+        metadata = [
+            ("Slug", f"`{idea['slug']}`"),
+            ("Recorded", idea["recorded_at"]),
+            ("Author", idea["author"]),
+            ("State", idea["current_state"]),
+            ("Last studied", idea["last_studied"]),
+            ("Completed studies", str(len(studies))),
+        ]
+        lines.append("## Metadata")
+        lines.append("")
+        for label, value in metadata:
+            if value:
+                lines.append(f"- **{label}:** {value}")
+        lines.append("")
+
+        if sources or children:
+            lines.append("## Lineage")
+            lines.append("")
+            if sources:
+                lines.append("**Derived from**")
+                lines.append("")
+                for source in sources:
+                    lines.append(f"- {source['title']} (`{source['slug']}`)")
+                lines.append("")
+            if children:
+                lines.append("**Spawned ideas**")
+                lines.append("")
+                for child in children:
+                    lines.append(f"- {child['title']} (`{child['slug']}`)")
+                lines.append("")
+
+        lines.append("## Idea")
+        lines.append("")
+        body = (idea["body"] or "").strip()
+        if body:
+            lines.append(body)
+        else:
+            lines.append("_No idea body provided._")
+        lines.append("")
+
+        if studies:
+            for study in studies:
+                study_title = study["title"] or f"Study {study['study_number']}"
+                study_mode = study["mode"] or "unknown"
+                study_created_at = study["completed_at"] or study["started_at"]
+                lines.append(f"## Study #{study['study_number']}: {study_title}")
+                lines.append("")
+                lines.append(f"- **Mode:** {study_mode}")
+                if study_created_at:
+                    lines.append(f"- **Completed:** {study_created_at}")
+                lines.append("")
+                study_body = (study["body"] or "").strip()
+                if study_body:
+                    lines.append(shift_headings(study_body, levels=1).rstrip())
+                else:
+                    lines.append("_No study content captured._")
+                lines.append("")
+
+        return "\n".join(lines).rstrip() + "\n"
 
     def status(self, slug: str) -> IdeaDetail:
         """Return detailed status for a single idea. Raises KeyError if not found."""

@@ -1313,6 +1313,15 @@ textarea {
   background: var(--state-further-bg);
 }
 
+.action-btn--export {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.action-btn--export:hover {
+  background: var(--selected-bg);
+}
+
 .action-btn--delete {
   border-color: var(--danger);
   color: var(--danger);
