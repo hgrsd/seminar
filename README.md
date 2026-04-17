@@ -33,7 +33,7 @@ cd seminar
 ./install.sh
 ```
 
-The installer builds the frontend, installs the `seminar` CLI, and runs `seminar init` once to bootstrap local state.
+The installer builds the frontend, installs the `seminar` CLI, and runs `seminar init` once to bootstrap local state and install the default worker skills.
 
 Then:
 
@@ -47,7 +47,7 @@ Open Settings in the dashboard to choose the provider, adjust the agent command,
 
 ## Configuration
 
-`seminar init` creates `~/.seminar/config.json`, but ongoing configuration is managed from the dashboard's Settings modal.
+`seminar init` creates `~/.seminar/config.json` and installs the default worker skill templates into `~/.seminar/skills`. Ongoing configuration is managed from the dashboard's Settings modal.
 
 Settings currently cover:
 
@@ -71,6 +71,7 @@ Everything lives under `data_dir`:
 - `state.db`: durable state, including all studies
 - `logs/`: worker run logs
 - `scratch/`: per-run working directories and study artefacts
+- `skills/`: installed worker prompt templates used at runtime
 
 ## CLI
 

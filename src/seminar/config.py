@@ -51,6 +51,10 @@ class Config:
     def logs_dir(self) -> Path:
         return Path(self.data_dir) / "logs"
 
+    @property
+    def skills_dir(self) -> Path:
+        return Path(self.data_dir) / "skills"
+
 
 def load() -> Config:
     """Load config from disk. Raises if not found or incomplete."""

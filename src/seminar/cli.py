@@ -1,6 +1,7 @@
 """Argument parsing and subcommand dispatch."""
 
 import argparse
+import importlib.resources
 import json
 import sys
 from dataclasses import asdict
@@ -205,9 +206,11 @@ def _cmd_init(provider_flag: str | None) -> None:
     config.save(cfg)
     db.configure(Path(cfg.data_dir))
     db.init_db()
+    _install_default_skills(cfg)
 
     print(f"Initialized seminar with provider {provider_name!r}.")
     print(f"Config: {config.CONFIG_PATH}")
+    print(f"Skills: {cfg.skills_dir}")
 
 
 def _cmd_status(svc: SimpleNamespace, slug: str | None) -> None:
@@ -334,6 +337,7 @@ def _cmd_reset_all() -> None:
 
 
 def _cmd_uninstall() -> None:
+    cfg = None
     try:
         cfg = config.load()
         db.configure(Path(cfg.data_dir))
@@ -345,6 +349,8 @@ def _cmd_uninstall() -> None:
         print(f"  - {db.DB_PATH} (state database)")
     if config.CONFIG_PATH.exists():
         print(f"  - {config.CONFIG_PATH} (config)")
+    if cfg is not None and cfg.skills_dir.exists():
+        print(f"  - {cfg.skills_dir}/ (installed skills)")
     seminar_dir = config.CONFIG_PATH.parent
     if seminar_dir.exists():
         print(f"  - {seminar_dir}/ (if empty)")
@@ -356,6 +362,10 @@ def _cmd_uninstall() -> None:
         return
 
     service.nuke_db()
+    if cfg is not None and cfg.skills_dir.exists():
+        for path in cfg.skills_dir.iterdir():
+            path.unlink()
+        cfg.skills_dir.rmdir()
     if config.CONFIG_PATH.exists():
         config.CONFIG_PATH.unlink()
     if seminar_dir.exists() and not any(seminar_dir.iterdir()):
@@ -455,6 +465,18 @@ def _decode_api_error(e: error.HTTPError) -> str:
     if isinstance(payload, dict) and isinstance(payload.get("error"), str):
         return payload["error"]
     return f"request failed with status {e.code}"
+
+
+def _install_default_skills(cfg: Config) -> None:
+    cfg.skills_dir.mkdir(parents=True, exist_ok=True)
+    skills = importlib.resources.files("seminar.skills")
+    for filename in (
+        "initial-exploration.md",
+        "follow-up-research.md",
+        "connective-research.md",
+    ):
+        destination = cfg.skills_dir / filename
+        destination.write_text(skills.joinpath(filename).read_text())
 
 
 if __name__ == "__main__":

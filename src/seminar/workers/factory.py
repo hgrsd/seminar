@@ -1,16 +1,11 @@
 """Worker construction helpers from application config."""
 
-from pathlib import Path
-
 from seminar.config import Config
 from seminar.workers.types import (
     ConnectiveResearchWorker,
     FollowUpResearchWorker,
     InitialExplorationWorker,
 )
-
-SKILLS_DIR = Path(__file__).parent.parent / "skills"
-
 
 def make_initial_exploration_worker(cfg: Config) -> InitialExplorationWorker:
     return InitialExplorationWorker(
@@ -47,7 +42,12 @@ def make_connective_research_worker(cfg: Config) -> ConnectiveResearchWorker:
 
 def _render_skill(filename: str, cfg: Config) -> str:
     """Load a skill template and render the tools placeholder."""
-    template = (SKILLS_DIR / filename).read_text()
+    template_path = cfg.skills_dir / filename
+    if not template_path.exists():
+        raise FileNotFoundError(
+            f"Skill template not found at {template_path}. Run `seminar init` to install skills."
+        )
+    template = template_path.read_text()
     if cfg.tools:
         tools_block = "Additionally, the following tools are available:\n" + "\n".join(
             f"   - {t}" for t in cfg.tools
