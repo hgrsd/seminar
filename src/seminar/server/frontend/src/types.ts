@@ -43,6 +43,18 @@ export interface StudyFile {
   content: string;
 }
 
+export interface Annotation {
+  id: number;
+  idea_slug: string;
+  study_number: number;
+  rendered_text_start_offset: number;
+  rendered_text_end_offset: number;
+  rendered_text: string;
+  body: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Worker {
   id: number;
   type: "initial_exploration" | "follow_up_research" | "connective_research";

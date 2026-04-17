@@ -4,6 +4,7 @@ from fastapi import Request
 
 from seminar.config import Config
 from seminar.server.broadcast import BroadcastHub
+from seminar.service.annotations import AnnotationService
 from seminar.service.ideas import IdeaService
 from seminar.service.initial_expectations import InitialExpectationService
 from seminar.service.proposals import ProposalService
@@ -15,6 +16,10 @@ from seminar.workers import WorkerPool
 
 def get_hub(request: Request) -> BroadcastHub:
     return request.app.state.hub
+
+
+def get_annotation_service(request: Request) -> AnnotationService:
+    return request.app.state.annotation_service
 
 
 def get_idea_service(request: Request) -> IdeaService:

@@ -4,6 +4,7 @@ import remarkGfm from "remark-gfm";
 import type { Idea, StudyFile, Worker, Proposal, NavigationTarget, InitialExpectation } from "../types";
 import { useIdeas } from "../hooks/useIdeas";
 import { useProposals } from "../hooks/useProposals";
+import { useStudyAnnotations } from "../hooks/useStudyAnnotations";
 import { relativeTime, workerTypeLabel, studyModeLabel, WORKER_TYPE_COLORS } from "../utils";
 import { StudyCard } from "./StudyCard";
 
@@ -279,6 +280,23 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
   );
 
   const mdComponents = useMemo(() => makeHeadingComponents(scrollRef), [scrollRef]);
+  const {
+    annotationLoading,
+    annotationBody,
+    annotationPopover,
+    activeAnnotation,
+    studyProseRef,
+    setAnnotationBody,
+    beginCreate,
+    cancelEdit,
+    cancelPopover,
+    createAnnotation,
+    deleteAnnotation,
+    handleStudyClick,
+    handleStudySelection,
+    startEdit,
+    updateAnnotation,
+  } = useStudyAnnotations(idea?.slug, selectedStudy, activeStudy?.content);
 
   if (selectedProposal) {
     const handleApprove = () => {
@@ -417,10 +435,121 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
             <div id="toc-top" />
             <TableOfContents entries={tocEntries} scrollRef={scrollRef} />
             {activeStudy.content && (
-              <div className="prose">
+              <div
+                ref={studyProseRef}
+                className="prose prose--annotatable"
+                onMouseUp={handleStudySelection}
+                onClick={handleStudyClick}
+              >
                 <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
                   {activeStudy.content}
                 </ReactMarkdown>
+              </div>
+            )}
+            {annotationLoading && (
+              <div className="annotation-loading">Loading annotations...</div>
+            )}
+            {annotationPopover && (
+              <div
+                className={`annotation-popover annotation-popover--${annotationPopover.placement}`}
+                style={{
+                  left: annotationPopover.x,
+                  top: annotationPopover.y,
+                }}
+              >
+                {annotationPopover.mode === "selection" && (
+                  <button
+                    className="annotation-selection-button"
+                    onClick={beginCreate}
+                  >
+                    Annotate
+                  </button>
+                )}
+
+                {annotationPopover.mode === "create" && (
+                  <>
+                    <div className="annotation-popover-title">New annotation</div>
+                    <textarea
+                      className="director-note-input annotation-popover-input"
+                      autoFocus
+                      value={annotationBody}
+                      onChange={(e) => setAnnotationBody(e.target.value)}
+                      rows={4}
+                      placeholder="Write a note about this passage..."
+                    />
+                    <div className="annotation-popover-actions">
+                      <button
+                        className="action-btn"
+                        onClick={cancelPopover}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        className="action-btn action-btn--done"
+                        disabled={!annotationBody.trim()}
+                        onClick={() => {
+                          void createAnnotation().catch(console.error);
+                        }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                {(annotationPopover.mode === "view" || annotationPopover.mode === "edit") && activeAnnotation && (
+                  <>
+                    <div className="annotation-popover-title">Annotation</div>
+                    {annotationPopover.mode === "edit" ? (
+                      <>
+                        <textarea
+                          className="director-note-input annotation-popover-input"
+                          autoFocus
+                          value={annotationBody}
+                          onChange={(e) => setAnnotationBody(e.target.value)}
+                          rows={4}
+                        />
+                        <div className="annotation-popover-actions">
+                          <button
+                            className="action-btn"
+                            onClick={cancelEdit}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            className="action-btn action-btn--done"
+                            disabled={!annotationBody.trim()}
+                            onClick={() => {
+                              void updateAnnotation().catch(console.error);
+                            }}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="annotation-popover-body">{activeAnnotation.body}</div>
+                        <div className="annotation-popover-actions">
+                          <button
+                            className="action-btn"
+                            onClick={startEdit}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            className="action-btn action-btn--delete"
+                            onClick={() => {
+                              void deleteAnnotation().catch(console.error);
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </>
+                )}
               </div>
             )}
           </article>

@@ -13,7 +13,8 @@ from fastapi.staticfiles import StaticFiles
 
 from seminar import config, db, providers, service
 from seminar.server.broadcast import BroadcastHub
-from seminar.server.routers import ideas, proposals, studies, system, workers
+from seminar.server.routers import annotations, ideas, proposals, studies, system, workers
+from seminar.service.annotations import AnnotationService
 from seminar.service.ideas import IdeaService
 from seminar.service.initial_expectations import InitialExpectationService
 from seminar.service.proposals import ProposalService
@@ -71,6 +72,7 @@ async def lifespan(app: FastAPI):
     hub.set_loop(asyncio.get_running_loop())
 
     app.state.hub = hub
+    app.state.annotation_service = AnnotationService(connect)
     app.state.idea_service = IdeaService(cfg.scratch_dir, connect)
     app.state.initial_expectation_service = InitialExpectationService(connect)
     app.state.study_service = StudyService(cfg.scratch_dir, cfg.follow_up_research_cooldown_minutes, connect)
@@ -136,6 +138,7 @@ def _snapshot_payload(app: FastAPI) -> dict:
 
 app = FastAPI(lifespan=lifespan)
 
+app.include_router(annotations.router)
 app.include_router(ideas.router)
 app.include_router(proposals.router)
 app.include_router(studies.router)

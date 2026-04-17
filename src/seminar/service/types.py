@@ -99,6 +99,19 @@ class StudyDetail:
     content: str
 
 
+@dataclass
+class Annotation:
+    id: int
+    idea_slug: str
+    study_number: int
+    rendered_text_start_offset: int
+    rendered_text_end_offset: int
+    rendered_text: str
+    body: str
+    created_at: str
+    updated_at: str
+
+
 # --- Proposals ---
 
 
