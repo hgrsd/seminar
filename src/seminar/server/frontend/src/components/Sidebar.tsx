@@ -131,13 +131,13 @@ export function Sidebar({ ideas, proposals, activeWorkers, selectedSlug, selecte
             </button>
           );
         })}
-        <button className="sidebar-collapse-btn" onClick={() => toggleAllSections(true)} title="Expand all">
+        <button className="icon-btn sidebar-collapse-btn" onClick={() => toggleAllSections(true)} title="Expand all">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
             <polyline points="4,6 8,2 12,6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
             <polyline points="4,10 8,14 12,10" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
-        <button className="sidebar-collapse-btn" onClick={() => toggleAllSections(false)} title="Collapse all">
+        <button className="icon-btn sidebar-collapse-btn" onClick={() => toggleAllSections(false)} title="Collapse all">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
             <polyline points="4,2 8,6 12,2" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
             <polyline points="4,14 8,10 12,14" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -284,7 +284,7 @@ export function Sidebar({ ideas, proposals, activeWorkers, selectedSlug, selecte
       </div>
       <div className="sidebar-bottom">
         <button
-          className="sidebar-collapse-btn"
+          className="icon-btn sidebar-collapse-btn"
           onClick={onCollapse}
           title="Hide sidebar"
         >

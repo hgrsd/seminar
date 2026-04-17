@@ -24,10 +24,10 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  idea: "var(--state-active)",
-  study: "var(--state-further)",
-  proposal: "var(--state-done)",
-  annotation: "var(--state-not-started)",
+  idea: "var(--amber)",
+  study: "var(--violet)",
+  proposal: "var(--green)",
+  annotation: "var(--grey)",
 };
 
 function Highlight({ text, query }: { text: string; query: string }) {

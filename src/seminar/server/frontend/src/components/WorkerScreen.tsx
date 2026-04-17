@@ -454,9 +454,9 @@ function GlobalHistory({
   return (
     <div className="history-list">
       <div className="history-date-picker">
-        <button className="history-date-btn" onClick={() => shiftDate(-1)}>&lsaquo;</button>
+        <button className="icon-btn history-date-btn" onClick={() => shiftDate(-1)}>&lsaquo;</button>
         <span className="history-date-label">{formatDateLabel(date)}</span>
-        <button className="history-date-btn" onClick={() => shiftDate(1)} disabled={date >= today}>&rsaquo;</button>
+        <button className="icon-btn history-date-btn" onClick={() => shiftDate(1)} disabled={date >= today}>&rsaquo;</button>
       </div>
 
       {loading && <div className="worker-log-empty">Loading runs...</div>}
@@ -571,7 +571,7 @@ export function WorkerScreen({ workers, ideas, initialWorkerId, onClose, onNavig
     return (
       <main className="reading-pane">
         <div className="reading-pane-scroll">
-          <button className="reading-pane-close" onClick={onClose} title="Close">&times;</button>
+          <button className="icon-btn reading-pane-close" onClick={onClose} title="Close">&times;</button>
           <div className="reading-pane-content">
             <HistoryLogView
               run={historyRun}
@@ -590,7 +590,7 @@ export function WorkerScreen({ workers, ideas, initialWorkerId, onClose, onNavig
     return (
       <main className="reading-pane">
         <div className="reading-pane-scroll">
-          <button className="reading-pane-close" onClick={onClose} title="Close">&times;</button>
+          <button className="icon-btn reading-pane-close" onClick={onClose} title="Close">&times;</button>
           <div className="reading-pane-content">
             <WorkerDetail
               worker={selectedWorker}
@@ -610,7 +610,7 @@ export function WorkerScreen({ workers, ideas, initialWorkerId, onClose, onNavig
   return (
     <main className="reading-pane">
       <div className="reading-pane-scroll">
-        <button className="reading-pane-close" onClick={onClose} title="Close">&times;</button>
+        <button className="icon-btn reading-pane-close" onClick={onClose} title="Close">&times;</button>
         <div className="reading-pane-content">
           <div className="worker-screen-header">
             <h1 className="reading-pane-title">Control Plane</h1>

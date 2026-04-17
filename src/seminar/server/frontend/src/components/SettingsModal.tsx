@@ -226,7 +226,7 @@ export function SettingsModal({ onClose }: Props) {
                     />
                     <button
                       type="button"
-                      className="settings-tool-remove"
+                      className="icon-btn settings-tool-remove"
                       onClick={() => {
                         const next = draft.tools.filter((_, j) => j !== i);
                         setDraft({ ...draft, tools: next });

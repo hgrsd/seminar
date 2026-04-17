@@ -128,7 +128,7 @@ export function TopBar({
           + New Idea
         </button>
         <button
-          className="topbar-theme-toggle"
+          className="icon-btn topbar-theme-toggle"
           onClick={onOpenSettings}
           title="Open settings"
           aria-label="Open settings"
@@ -138,7 +138,7 @@ export function TopBar({
           </svg>
         </button>
         <button
-          className="topbar-theme-toggle"
+          className="icon-btn topbar-theme-toggle"
           onClick={onToggleTheme}
           title={dark ? "Switch to light mode" : "Switch to dark mode"}
         >

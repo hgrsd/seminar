@@ -331,7 +331,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
     return (
       <main className="reading-pane">
         <div className="reading-pane-scroll" ref={scrollRef}>
-          <button className="reading-pane-close" onClick={onClose} title="Close">&times;</button>
+          <button className="icon-btn reading-pane-close" onClick={onClose} title="Close">&times;</button>
           <article className="reading-pane-content">
             <header className="reading-pane-header">
               <h1 className="reading-pane-title">{selectedProposal.title}</h1>
@@ -423,7 +423,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
     return (
       <main className="reading-pane">
         <div className="reading-pane-scroll" ref={scrollRef}>
-          <button className="reading-pane-close" onClick={onClose} title="Close">&times;</button>
+          <button className="icon-btn reading-pane-close" onClick={onClose} title="Close">&times;</button>
           <article className="reading-pane-content">
             <button className="reading-pane-back" onClick={() => onNavigate({ type: "idea", slug: idea.slug })}>
               &larr; {title}
@@ -621,7 +621,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
   return (
     <main className="reading-pane">
       <div className="reading-pane-scroll" ref={scrollRef}>
-        <button className="reading-pane-close" onClick={onClose} title="Close">&times;</button>
+        <button className="icon-btn reading-pane-close" onClick={onClose} title="Close">&times;</button>
         <article className="reading-pane-content">
           <header className="reading-pane-header">
             <h1 className="reading-pane-title">{title}</h1>

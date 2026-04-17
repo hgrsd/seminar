@@ -24,8 +24,8 @@ export function formatTimestamp(dateStr: string): string {
 }
 
 export const WORKER_TYPE_COLORS: Record<string, string> = {
-  initial_exploration: "var(--state-active)",
-  follow_up_research: "var(--state-further)",
+  initial_exploration: "var(--amber)",
+  follow_up_research: "var(--violet)",
   connective_research: "var(--accent)",
 };
 
