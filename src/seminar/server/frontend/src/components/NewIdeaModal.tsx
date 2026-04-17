@@ -161,7 +161,7 @@ export function NewIdeaModal({ onClose }: Props) {
             </button>
             <button
               type="submit"
-              className="action-btn action-btn--done"
+              className="action-btn btn--primary"
               disabled={submitting || !title.trim() || !slug.trim() || !author.trim()}
             >
               {submitting ? "Creating..." : "Create"}

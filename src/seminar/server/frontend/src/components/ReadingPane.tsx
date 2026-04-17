@@ -374,10 +374,10 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
             {!proposalLoading && selectedProposal.status === "pending" && (
               <footer className="reading-pane-actions">
                 <div className="action-buttons">
-                  <button className="action-btn action-btn--done" onClick={handleApprove}>
+                  <button className="action-btn btn--primary" onClick={handleApprove}>
                     Approve
                   </button>
-                  <button className="action-btn action-btn--delete" onClick={handleRejectProposal}>
+                  <button className="action-btn" onClick={handleRejectProposal}>
                     {confirmReject ? "Confirm Reject" : "Reject"}
                   </button>
                 </div>
@@ -392,7 +392,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
                 <div className="action-buttons">
                   <button
                     ref={deleteProposalBtnRef}
-                    className="action-btn action-btn--delete"
+                    className="action-btn"
                     onClick={handleDeleteProposal}
                   >
                     {confirmDeleteProposal ? "Confirm Delete" : "Delete"}
@@ -493,7 +493,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
                         Cancel
                       </button>
                       <button
-                        className="action-btn action-btn--done"
+                        className="action-btn btn--primary"
                         disabled={!annotationBody.trim()}
                         onClick={() => {
                           void createAnnotation().catch(console.error);
@@ -525,7 +525,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
                             Cancel
                           </button>
                           <button
-                            className="action-btn action-btn--done"
+                            className="action-btn btn--primary"
                             disabled={!annotationBody.trim()}
                             onClick={() => {
                               void updateAnnotation().catch(console.error);
@@ -546,7 +546,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
                             Edit
                           </button>
                           <button
-                            className="action-btn action-btn--delete"
+                            className="action-btn"
                             onClick={() => {
                               void deleteAnnotation().catch(console.error);
                             }}
@@ -734,7 +734,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
                 rows={3}
               />
               <button
-                className="action-btn action-btn--done director-note-submit"
+                className="action-btn btn--primary director-note-submit"
                 disabled={!noteText.trim() || noteSubmitting}
                 onClick={() => {
                   setNoteSubmitting(true);
@@ -755,7 +755,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
             <footer className="reading-pane-actions">
               <div className="action-buttons">
                 <button
-                  className="action-btn action-btn--export"
+                  className="action-btn"
                   onClick={handleExport}
                   disabled={exporting}
                 >
@@ -763,14 +763,14 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
                 </button>
                 {idea.current_state === "done" ? (
                   <button
-                    className="action-btn action-btn--reopen"
+                    className="action-btn"
                     onClick={handleReopen}
                   >
                     Continue Researching
                   </button>
                 ) : (
                   <button
-                    className="action-btn action-btn--done"
+                    className="action-btn"
                     onClick={handleMarkDone}
                   >
                     Mark Done
@@ -778,14 +778,14 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
                 )}
                 <button
                   ref={resetBtnRef}
-                  className="action-btn action-btn--reset"
+                  className="action-btn"
                   onClick={handleReset}
                 >
                   {confirmReset ? "Confirm Reset" : "Reset"}
                 </button>
                 <button
                   ref={deleteBtnRef}
-                  className="action-btn action-btn--delete"
+                  className="action-btn"
                   onClick={handleDelete}
                 >
                   {confirmDelete ? "Confirm Delete" : "Delete"}

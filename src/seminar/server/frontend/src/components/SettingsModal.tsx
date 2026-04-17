@@ -253,7 +253,7 @@ export function SettingsModal({ onClose }: Props) {
 
             <div className="modal-actions">
               <button type="button" className="action-btn" onClick={onClose}>Close</button>
-              <button type="submit" className="action-btn action-btn--done" disabled={saving}>
+              <button type="submit" className="action-btn btn--primary" disabled={saving}>
                 {saving ? "Saving..." : "Save Settings"}
               </button>
             </div>

@@ -232,7 +232,7 @@ function WorkerDetail({
         <div className="worker-detail-actions">
           {isActive(worker) && (
             <button
-              className="action-btn action-btn--warn"
+              className="action-btn"
               onClick={() => {
                 if (confirm(`Kill the current task for worker ${worker.id}? The worker will return to idle.`)) {
                   onKillTask(worker.id);
@@ -243,7 +243,7 @@ function WorkerDetail({
             </button>
           )}
           <button
-            className="action-btn action-btn--delete"
+            className="action-btn"
             onClick={() => {
               const msg = isActive(worker)
                 ? `This worker is currently ${worker.status} and will lose its progress. Remove worker ${worker.id}?`

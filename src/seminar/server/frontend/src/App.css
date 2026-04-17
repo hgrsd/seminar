@@ -1278,66 +1278,24 @@ textarea {
 }
 
 .action-btn:hover {
-  background: var(--bg);
+  background: var(--bg-muted);
+  border-color: var(--text-muted);
+}
+
+.action-btn.btn--primary {
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
+}
+
+.action-btn.btn--primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 
 .action-btn:disabled {
   opacity: 0.5;
   cursor: default;
-}
-
-.action-btn--reopen {
-  border-color: var(--violet);
-  color: var(--violet);
-}
-
-.action-btn--reopen:hover {
-  background: var(--violet-tint);
-}
-
-.action-btn--done {
-  border-color: var(--green);
-  color: var(--green);
-}
-
-.action-btn--done:hover {
-  background: var(--green-tint);
-}
-
-.action-btn--reset {
-  border-color: var(--gold-border);
-  color: var(--gold);
-}
-
-.action-btn--reset:hover {
-  background: var(--gold-tint);
-}
-
-.action-btn--warn {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.action-btn--warn:hover {
-  background: var(--accent-bg);
-}
-
-.action-btn--export {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.action-btn--export:hover {
-  background: var(--accent-bg);
-}
-
-.action-btn--delete {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-.action-btn--delete:hover {
-  background: var(--danger-bg-hover);
 }
 
 /* ─── Activity Drawer ──────────────────────────────────── */
