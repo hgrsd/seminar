@@ -131,6 +131,7 @@ interface Props {
   onWorkerClick: (workerId: number) => void;
   selectedStudy: number | null;
   scrollToAnnotationId: number | null;
+  onScrollToAnnotationHandled: () => void;
   studiesCache: Record<string, StudyFile[]>;
   fetchStudies: (slug: string) => void;
   onNavigate: (target: NavigationTarget) => void;
@@ -152,7 +153,7 @@ const STATE_CLASSES: Record<string, string> = {
   done: "state-badge--done",
 };
 
-export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerClick, selectedStudy, scrollToAnnotationId, studiesCache, fetchStudies, onNavigate, onClose }: Props) {
+export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerClick, selectedStudy, scrollToAnnotationId, onScrollToAnnotationHandled, studiesCache, fetchStudies, onNavigate, onClose }: Props) {
   const {
     markIdeaDone,
     reopenIdea,
@@ -297,7 +298,13 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
     handleStudySelection,
     startEdit,
     updateAnnotation,
-  } = useStudyAnnotations(idea?.slug, selectedStudy, activeStudy?.content, scrollToAnnotationId);
+  } = useStudyAnnotations(
+    idea?.slug,
+    selectedStudy,
+    activeStudy?.content,
+    scrollToAnnotationId,
+    onScrollToAnnotationHandled,
+  );
 
   if (selectedProposal) {
     const handleApprove = () => {

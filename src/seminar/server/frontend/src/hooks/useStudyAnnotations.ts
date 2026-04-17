@@ -26,6 +26,26 @@ interface TextSegment {
   end: number;
 }
 
+function anchorFromPointer(
+  pointerX: number,
+  pointerY: number,
+) {
+  const minAboveSpace = 180;
+  const placement = pointerY < minAboveSpace ? "below" as const : "above" as const;
+  return {
+    x: pointerX + 2,
+    y: placement === "below" ? pointerY + 6 : pointerY - 4,
+    placement,
+  };
+}
+
+function anchorFromElement(element: Element) {
+  const rect = element.getBoundingClientRect();
+  const anchorX = Math.min(rect.left + Math.min(rect.width / 2, 32), window.innerWidth - 24);
+  const anchorY = rect.top < 180 ? rect.bottom : rect.top;
+  return anchorFromPointer(anchorX, anchorY);
+}
+
 function rangesOverlap(
   startA: number,
   endA: number,
@@ -125,15 +145,13 @@ function applyHighlights(root: HTMLElement, annotations: Annotation[]) {
   unwrapHighlights(root);
   if (annotations.length === 0) return;
 
-  const segments = collectTextSegments(root);
-  // Apply in document order so splitText offsets remain valid
   const sorted = [...annotations].sort(
     (a, b) => a.rendered_text_start_offset - b.rendered_text_start_offset,
   );
 
   for (const annotation of sorted) {
     wrapTextSegments(
-      segments,
+      collectTextSegments(root),
       annotation.rendered_text_start_offset,
       annotation.rendered_text_end_offset,
       () => {
@@ -166,6 +184,7 @@ export function useStudyAnnotations(
   selectedStudy: number | null,
   activeStudyContent: string | null | undefined,
   scrollToAnnotationId: number | null = null,
+  onScrollToAnnotationHandled?: () => void,
 ) {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annotationLoading, setAnnotationLoading] = useState(false);
@@ -210,31 +229,33 @@ export function useStudyAnnotations(
   }, [activeStudyContent, annotations, annotationPopover]);
 
   useEffect(() => {
-    if (!scrollToAnnotationId || !studyProseRef.current || annotations.length === 0) return;
-    const annotation = annotations.find((a) => a.id === scrollToAnnotationId);
-    const span = studyProseRef.current.querySelector(
-      `span.study-annotation-highlight[data-annotation-id="${scrollToAnnotationId}"]`,
-    );
-    if (!span || !annotation) return;
-    span.scrollIntoView({ behavior: "smooth", block: "center" });
-    const anchor = anchorFromPointer(
-      window.innerWidth / 2,
-      window.innerHeight / 2,
-    );
-    setAnnotationPopover({
-      mode: "view",
-      x: anchor.x,
-      y: anchor.y,
-      placement: anchor.placement,
-      annotation,
+    if (!scrollToAnnotationId || !studyProseRef.current || !activeStudyContent || annotations.length === 0) return;
+    const frame = requestAnimationFrame(() => {
+      const annotation = annotations.find((a) => a.id === scrollToAnnotationId);
+      const span = studyProseRef.current?.querySelector(
+        `span.study-annotation-highlight[data-annotation-id="${scrollToAnnotationId}"]`,
+      );
+      if (!span || !annotation) return;
+      span.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
+      const anchor = anchorFromElement(span);
+      setAnnotationPopover({
+        mode: "view",
+        x: anchor.x,
+        y: anchor.y,
+        placement: anchor.placement,
+        annotation,
+      });
+      setAnnotationBody(annotation.body);
+      onScrollToAnnotationHandled?.();
     });
-    setAnnotationBody(annotation.body);
-  }, [scrollToAnnotationId, annotations]);
+    return () => cancelAnimationFrame(frame);
+  }, [activeStudyContent, annotations, onScrollToAnnotationHandled, scrollToAnnotationId]);
 
   useEffect(() => {
     if (!annotationPopover) return;
     const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
+      const target = e.target;
+      if (!(target instanceof Element)) return;
       if (
         !target.closest(".annotation-popover") &&
         !target.closest(".study-annotation-highlight")
@@ -261,19 +282,6 @@ export function useStudyAnnotations(
     () => annotationPopover?.annotation ?? null,
     [annotationPopover],
   );
-
-  const anchorFromPointer = useCallback((
-    pointerX: number,
-    pointerY: number,
-  ) => {
-    const minAboveSpace = 180;
-    const placement = pointerY < minAboveSpace ? "below" as const : "above" as const;
-    return {
-      x: pointerX + 2,
-      y: placement === "below" ? pointerY + 6 : pointerY - 4,
-      placement,
-    };
-  }, []);
 
   const handleStudySelection = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!activeStudyContent || !studyProseRef.current) return;
@@ -375,7 +383,8 @@ export function useStudyAnnotations(
   }, [activeStudyContent, anchorFromPointer, annotations]);
 
   const handleStudyClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const target = e.target as HTMLElement;
+    const target = e.target;
+    if (!(target instanceof Element)) return;
     const highlight = target.closest(".study-annotation-highlight") as HTMLElement | null;
     if (!highlight) return;
     e.preventDefault();

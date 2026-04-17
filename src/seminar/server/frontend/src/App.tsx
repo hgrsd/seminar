@@ -166,10 +166,16 @@ export default function App() {
             onWorkerClick={(workerId) => { setInitialWorkerId(workerId); setWorkerScreenOpen(true); }}
             selectedStudy={selectedStudy}
             scrollToAnnotationId={scrollToAnnotationId}
+            onScrollToAnnotationHandled={() => setScrollToAnnotationId(null)}
             studiesCache={studiesCache}
             fetchStudies={fetchStudies}
             onNavigate={navigateTo}
-            onClose={() => { setSelectedSlug(null); setSelectedStudy(null); setSelectedProposal(null); }}
+            onClose={() => {
+              setSelectedSlug(null);
+              setSelectedStudy(null);
+              setSelectedProposal(null);
+              setScrollToAnnotationId(null);
+            }}
           />
         )}
       </div>
