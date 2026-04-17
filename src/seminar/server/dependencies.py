@@ -5,6 +5,7 @@ from fastapi import Request
 from seminar.config import Config
 from seminar.server.broadcast import BroadcastHub
 from seminar.service.ideas import IdeaService
+from seminar.service.initial_expectations import InitialExpectationService
 from seminar.service.proposals import ProposalService
 from seminar.service.runs import RunService
 from seminar.service.search import SearchService
@@ -18,6 +19,10 @@ def get_hub(request: Request) -> BroadcastHub:
 
 def get_idea_service(request: Request) -> IdeaService:
     return request.app.state.idea_service
+
+
+def get_initial_expectation_service(request: Request) -> InitialExpectationService:
+    return request.app.state.initial_expectation_service
 
 
 def get_study_service(request: Request) -> StudyService:

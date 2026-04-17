@@ -57,10 +57,16 @@ If the last study is a synthesis, consider whether there are genuinely unexplore
 
 Produce the definitive capstone document — it must stand alone as a complete account of what the idea was, what each study explored, and what the unified findings are.
 
-5. Write a synthesis to `study_markdown_path`. Format:
+5. If and only if you have already decided to synthesise, you may now check whether the idea has an initial expectation:
+   ```
+   seminar ideas initial-expectation <slug>
+   ```
+   If it returns non-empty text, use it. If it returns nothing, proceed without it.
+6. Write a synthesis to `study_markdown_path`. Format:
    - YAML frontmatter: `idea` (slug), `study_number`, `title` (idea title + "— Synthesis"), `mode` (`synthesis`). No `created_at`.
    - Required sections: `## Abstract` (2-3 sentences), `## Original Idea`, `## Research Journey` (per-study summary, 2-4 sentences each, in order), `## Unified Findings` (most substantial section — synthesise key insights, resolve or flag contradictions), `## Practical Implications`, `## Remaining Gaps`, `## Sources` (consolidated, deduplicated, with URLs)
-6. **Mandatory final steps:**
+   - If and only if an initial expectation exists, also include `## Relationship to your initial expectation`. Restate it fairly, then explain whether the corpus supports, contradicts, complicates, or leaves it unresolved.
+7. **Mandatory final steps:**
    ```
    seminar complete-study <slug> <study_number> <study_markdown_path> --mode synthesis --title "<title>"
    seminar done <slug>

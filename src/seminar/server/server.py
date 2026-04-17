@@ -15,6 +15,7 @@ from seminar import config, db, providers, service
 from seminar.server.broadcast import BroadcastHub
 from seminar.server.routers import ideas, proposals, studies, system, workers
 from seminar.service.ideas import IdeaService
+from seminar.service.initial_expectations import InitialExpectationService
 from seminar.service.proposals import ProposalService
 from seminar.service.runs import RunService
 from seminar.service.search import SearchService
@@ -71,6 +72,7 @@ async def lifespan(app: FastAPI):
 
     app.state.hub = hub
     app.state.idea_service = IdeaService(cfg.scratch_dir, connect)
+    app.state.initial_expectation_service = InitialExpectationService(connect)
     app.state.study_service = StudyService(cfg.scratch_dir, cfg.follow_up_research_cooldown_minutes, connect)
     app.state.proposal_service = ProposalService(connect)
     app.state.search_service = SearchService(connect)

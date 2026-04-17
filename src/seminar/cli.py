@@ -12,6 +12,7 @@ from urllib import error, request
 from seminar import config, db, providers, service
 from seminar.config import Config, IntervalsConfig, TimeoutsConfig, WorkersConfig
 from seminar.service.ideas import IdeaService
+from seminar.service.initial_expectations import InitialExpectationService
 from seminar.service.proposals import ProposalService
 from seminar.service.studies import StudyService
 
@@ -60,6 +61,11 @@ def main(argv: list[str] | None = None) -> None:
     )
     ideas_read_p = ideas_sub.add_parser("read", help="Read the full idea file")
     ideas_read_p.add_argument("slug")
+    ideas_expectation_p = ideas_sub.add_parser(
+        "initial-expectation",
+        help="Read the initial expectation for an idea, if one exists",
+    )
+    ideas_expectation_p.add_argument("slug")
     ideas_propose_p = ideas_sub.add_parser(
         "propose",
         help="Propose a new idea (body via stdin, goes to proposals queue)",
@@ -121,6 +127,7 @@ def main(argv: list[str] | None = None) -> None:
         connect = db.connect
         return SimpleNamespace(
             ideas=IdeaService(cfg.scratch_dir, connect),
+            expectations=InitialExpectationService(connect),
             studies=StudyService(cfg.scratch_dir, cfg.follow_up_research_cooldown_minutes, connect),
             proposals=ProposalService(connect),
         )
@@ -284,10 +291,15 @@ def _cmd_ideas(svc: SimpleNamespace, args) -> None:
             print(f"Idea not found: {args.slug}", file=sys.stderr)
             sys.exit(1)
         print(content)
+    elif args.ideas_command == "initial-expectation":
+        expectation = svc.expectations.get(args.slug)
+        if expectation is None:
+            sys.exit(0)
+        print(expectation.body)
     elif args.ideas_command == "propose":
         _cmd_propose_idea(args.slug, args.parent_slugs, args.title, args.author)
     else:
-        print("Usage: seminar ideas {list|read|propose}", file=sys.stderr)
+        print("Usage: seminar ideas {list|read|initial-expectation|propose}", file=sys.stderr)
         sys.exit(1)
 
 

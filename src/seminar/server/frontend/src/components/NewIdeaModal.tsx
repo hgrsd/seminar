@@ -11,6 +11,7 @@ export function NewIdeaModal({ onClose }: Props) {
   const [slug, setSlug] = useState("");
   const [author, setAuthor] = useState("");
   const [content, setContent] = useState("");
+  const [initialExpectation, setInitialExpectation] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const titleRef = useRef<HTMLInputElement>(null);
@@ -53,6 +54,7 @@ export function NewIdeaModal({ onClose }: Props) {
         slug: trimmedSlug,
         author: author.trim(),
         body: content || `# ${trimmedTitle}\n`,
+        initial_expectation: initialExpectation,
       });
       onClose();
     } catch (err) {
@@ -131,6 +133,22 @@ export function NewIdeaModal({ onClose }: Props) {
               onChange={(e) => setContent(e.target.value)}
               rows={14}
             />
+          </div>
+          <div className="modal-field">
+            <label className="modal-label" htmlFor="idea-initial-expectation">
+              What do you expect the research to find?
+            </label>
+            <textarea
+              id="idea-initial-expectation"
+              className="modal-textarea modal-textarea--compact"
+              placeholder="Optional. Write what you currently expect the research to find."
+              value={initialExpectation}
+              onChange={(e) => setInitialExpectation(e.target.value)}
+              rows={4}
+            />
+            <div className="modal-note">
+              Record your starting view before Seminar begins researching. That keeps your own thinking in the loop and gives the final synthesis a real baseline to compare against, rather than relying on hindsight.
+            </div>
           </div>
           {error && <div className="modal-error">{error}</div>}
           <div className="modal-actions">

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback, isValidElement, type ReactNode, type ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { Idea, StudyFile, Worker, Proposal, NavigationTarget } from "../types";
+import type { Idea, StudyFile, Worker, Proposal, NavigationTarget, InitialExpectation } from "../types";
 import { useIdeas } from "../hooks/useIdeas";
 import { useProposals } from "../hooks/useProposals";
 import { relativeTime, workerTypeLabel, studyModeLabel, WORKER_TYPE_COLORS } from "../utils";
@@ -172,6 +172,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
   const [proposalLoading, setProposalLoading] = useState(false);
   const [sources, setSources] = useState<{ slug: string; title: string }[]>([]);
   const [children, setChildren] = useState<{ slug: string; title: string }[]>([]);
+  const [initialExpectation, setInitialExpectation] = useState<InitialExpectation | null>(null);
   const [noteText, setNoteText] = useState("");
   const [noteSubmitting, setNoteSubmitting] = useState(false);
   const [exporting, setExporting] = useState(false);
@@ -202,6 +203,7 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
       setContent(null);
       setTitle(null);
       setMeta(null);
+      setInitialExpectation(null);
       return;
     }
 
@@ -211,12 +213,21 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
     setMeta(null);
     setSources([]);
     setChildren([]);
+    setInitialExpectation(null);
     setConfirmDelete(false);
     setConfirmReset(false);
     fetchStudies(idea.slug);
 
     fetch(`/api/ideas/${idea.slug}/sources`).then((r) => r.json()).then(setSources).catch(() => {});
     fetch(`/api/ideas/${idea.slug}/children`).then((r) => r.json()).then(setChildren).catch(() => {});
+    fetch(`/api/ideas/${idea.slug}/initial-expectation`)
+      .then(async (r) => {
+        if (r.status === 404) return null;
+        if (!r.ok) throw new Error(`Initial expectation request failed with status ${r.status}`);
+        return (await r.json()) as InitialExpectation;
+      })
+      .then((value) => setInitialExpectation(value))
+      .catch(() => {});
 
     fetch(`/api/ideas/${idea.slug}/content`)
       .then((r) => r.json())
@@ -542,6 +553,19 @@ export function ReadingPane({ idea, selectedProposal, activeWorkers, onWorkerCli
                 {content}
               </ReactMarkdown>
             </div>
+          )}
+
+          {!loading && initialExpectation && (
+            <section className="initial-expectation-section">
+              <div className="studies-divider">
+                <span>Your initial expectation</span>
+              </div>
+              <div className="initial-expectation-card">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {initialExpectation.body}
+                </ReactMarkdown>
+              </div>
+            </section>
           )}
 
           {!loading && studies.length > 0 && (

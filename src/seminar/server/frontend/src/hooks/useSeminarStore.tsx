@@ -36,6 +36,7 @@ interface SeminarActions {
     slug: string;
     author?: string;
     body: string;
+    initial_expectation?: string;
   }) => Promise<void>;
   markIdeaDone: (slug: string) => Promise<void>;
   reopenIdea: (slug: string) => Promise<void>;
@@ -214,7 +215,13 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     };
   }, [connect]);
 
-  const createIdea = useCallback(async (input: { title: string; slug: string; author?: string; body: string }) => {
+  const createIdea = useCallback(async (input: {
+    title: string;
+    slug: string;
+    author?: string;
+    body: string;
+    initial_expectation?: string;
+  }) => {
     await apiRequest("/api/ideas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -223,6 +230,7 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
         slug: input.slug,
         author: input.author ?? "",
         body: input.body,
+        initial_expectation: input.initial_expectation?.trim() || undefined,
       }),
     });
   }, []);

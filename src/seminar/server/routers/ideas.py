@@ -7,11 +7,18 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse, PlainTextResponse
 from pydantic import BaseModel
 
+from seminar import db
 from seminar.server.broadcast import BroadcastHub
 from seminar.service import validate_slug
 from seminar.service.ideas import IdeaService
+from seminar.service.initial_expectations import InitialExpectationService
 from seminar.service.studies import StudyService
-from seminar.server.dependencies import get_hub, get_idea_service, get_study_service
+from seminar.server.dependencies import (
+    get_hub,
+    get_idea_service,
+    get_initial_expectation_service,
+    get_study_service,
+)
 
 router = APIRouter(prefix="/api")
 
@@ -21,11 +28,23 @@ class CreateIdeaRequest(BaseModel):
     title: str
     author: str
     body: str = ""
+    initial_expectation: str | None = None
 
 
 @router.get("/ideas/{slug}/content")
 def get_idea_content(slug: str, ideas: IdeaService = Depends(get_idea_service)):
     result = ideas.content(slug)
+    if result is None:
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return JSONResponse(asdict(result))
+
+
+@router.get("/ideas/{slug}/initial-expectation")
+def get_initial_expectation(
+    slug: str,
+    expectations: InitialExpectationService = Depends(get_initial_expectation_service),
+):
+    result = expectations.get(slug)
     if result is None:
         return JSONResponse({"error": "not found"}, status_code=404)
     return JSONResponse(asdict(result))
@@ -62,6 +81,7 @@ def export_idea(slug: str, ideas: IdeaService = Depends(get_idea_service)):
 def create_idea(
     req: CreateIdeaRequest,
     ideas: IdeaService = Depends(get_idea_service),
+    expectations: InitialExpectationService = Depends(get_initial_expectation_service),
     hub: BroadcastHub = Depends(get_hub),
 ):
     try:
@@ -70,7 +90,19 @@ def create_idea(
         return JSONResponse({"error": str(e)}, status_code=400)
 
     try:
-        ideas.create(slug, req.body, title=req.title, author=req.author.strip())
+        with db.transaction() as conn:
+            ideas.create(
+                slug,
+                req.body,
+                title=req.title,
+                author=req.author.strip(),
+                conn=conn,
+            )
+            expectations.create(
+                slug,
+                req.initial_expectation or "",
+                conn=conn,
+            )
     except sqlite3.IntegrityError:
         return JSONResponse({"error": f"Idea '{slug}' already exists"}, status_code=409)
 

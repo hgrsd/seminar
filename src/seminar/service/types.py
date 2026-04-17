@@ -35,6 +35,13 @@ class IdeaContent:
 
 
 @dataclass
+class InitialExpectation:
+    idea_slug: str
+    body: str
+    created_at: str
+
+
+@dataclass
 class StudyRow:
     """Raw study record as stored in the DB."""
     idea_slug: str

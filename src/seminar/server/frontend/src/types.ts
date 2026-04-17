@@ -19,6 +19,12 @@ export interface Idea {
   studies?: Study[];
 }
 
+export interface InitialExpectation {
+  idea_slug: string;
+  body: string;
+  created_at: string;
+}
+
 export interface Proposal {
   slug: string;
   recorded_at: string;

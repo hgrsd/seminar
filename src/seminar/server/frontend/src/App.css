@@ -1209,6 +1209,22 @@ textarea {
   margin-top: 24px;
 }
 
+.initial-expectation-section {
+  margin-top: 24px;
+}
+
+.initial-expectation-card {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--accent) 5%, var(--surface));
+}
+
+.initial-expectation-card .prose,
+.initial-expectation-card p:last-child {
+  margin-bottom: 0;
+}
+
 .director-note-input {
   width: 100%;
   font-family: var(--font-sans);
@@ -2105,6 +2121,10 @@ textarea {
 
 .modal-textarea:focus {
   border-color: var(--accent);
+}
+
+.modal-textarea--compact {
+  min-height: 112px;
 }
 
 .modal-error {

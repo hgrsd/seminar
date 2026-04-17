@@ -6,13 +6,22 @@ from typing import cast, override
 from seminar import db
 from seminar.service import IdeaState
 from seminar.service.ideas import IdeaService
-from seminar.service.types import IdeaContent, IdeaMeta, IdeaRef, IdeaStatus, IdeaSummary
+from seminar.service.initial_expectations import InitialExpectationService
+from seminar.service.types import (
+    IdeaContent,
+    IdeaMeta,
+    IdeaRef,
+    IdeaStatus,
+    IdeaSummary,
+    InitialExpectation,
+)
 
 
 class IdeaServiceTests(unittest.TestCase):
     temp_dir: tempfile.TemporaryDirectory[str] | None = None
     data_dir: Path | None = None
     idea_service: IdeaService | None = None
+    expectation_service: InitialExpectationService | None = None
 
     @override
     def setUp(self) -> None:
@@ -21,6 +30,7 @@ class IdeaServiceTests(unittest.TestCase):
         db.configure(self.data_dir)
         db.init_db()
         self.idea_service = IdeaService(self.data_dir / "scratch", db.connect)
+        self.expectation_service = InitialExpectationService(db.connect)
 
     @override
     def tearDown(self) -> None:
@@ -96,6 +106,53 @@ class IdeaServiceTests(unittest.TestCase):
                 locked=True,
                 locked_mode="follow_up_research",
             ),
+        )
+
+    def test_initial_expectation_is_stored_in_separate_table(self) -> None:
+        with db.transaction() as conn:
+            self._idea_service().create(
+                "topic",
+                "Idea body",
+                title="Topic",
+                author="Ada",
+                conn=conn,
+            )
+            self._expectation_service().create(
+                "topic",
+                "I expect this to be mostly a workflow problem.",
+                conn=conn,
+            )
+
+        self.assertEqual(
+            self._expectation_service().get("topic"),
+            InitialExpectation(
+                idea_slug="topic",
+                body="I expect this to be mostly a workflow problem.",
+                created_at=self._require_fetchval(
+                    "SELECT created_at FROM initial_expectations WHERE idea_slug = ?",
+                    ("topic",),
+                ),
+            ),
+        )
+
+    def test_blank_initial_expectation_is_not_stored(self) -> None:
+        with db.transaction() as conn:
+            self._idea_service().create(
+                "topic",
+                "Idea body",
+                title="Topic",
+                author="Ada",
+                conn=conn,
+            )
+            self._expectation_service().create("topic", "   ", conn=conn)
+
+        self.assertIsNone(self._expectation_service().get("topic"))
+        self.assertEqual(
+            self._count(
+                "SELECT COUNT(*) FROM initial_expectations WHERE idea_slug = ?",
+                ("topic",),
+            ),
+            0,
         )
 
     def test_mark_done_and_reopen_transition_state(self) -> None:
@@ -373,6 +430,16 @@ Study body
             raise AssertionError(f"Expected integer count, got {value!r}")
         return value
 
+    def _fetchval(self, query: str, params: tuple[object, ...] = ()) -> str | None:
+        rows = self._fetchall(query, params)
+        return str(rows[0][0]) if rows else None
+
+    def _require_fetchval(self, query: str, params: tuple[object, ...] = ()) -> str:
+        value = self._fetchval(query, params)
+        if value is None:
+            raise AssertionError("Expected value, got None")
+        return value
+
     def _data_dir(self) -> Path:
         if self.data_dir is None:
             raise AssertionError("data_dir was not initialized")
@@ -382,6 +449,11 @@ Study body
         if self.idea_service is None:
             raise AssertionError("idea_service was not initialized")
         return self.idea_service
+
+    def _expectation_service(self) -> InitialExpectationService:
+        if self.expectation_service is None:
+            raise AssertionError("expectation_service was not initialized")
+        return self.expectation_service
 
 
 if __name__ == "__main__":
