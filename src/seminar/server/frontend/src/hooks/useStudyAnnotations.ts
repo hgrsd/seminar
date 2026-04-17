@@ -1,6 +1,24 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Annotation } from "../types";
 
+/**
+ * Annotation positioning is defined in a flat "rendered text" coordinate space,
+ * not by markdown AST nodes or DOM paths.
+ *
+ * The algorithm is:
+ * 1. Render study markdown with react-markdown.
+ * 2. Walk the rendered DOM text nodes in document order and assign each a
+ *    half-open [start, end) range in one continuous text stream.
+ * 3. Persist annotations as offsets within that stream.
+ * 4. Reconstruct highlights by mapping persisted offsets back onto the current
+ *    DOM text nodes and wrapping only the overlapping slices.
+ * 5. Convert browser selections back into the same offset space before saving.
+ *
+ * The critical invariant is that selection capture and highlight rendering must
+ * use the exact same traversal rules, otherwise offsets drift and annotations
+ * land on the wrong text after reload. Any UI-only injected text must therefore
+ * be excluded from the text walker.
+ */
 export interface SelectionDraft {
   rendered_text_start_offset: number;
   rendered_text_end_offset: number;
@@ -80,6 +98,9 @@ function clearTemporarySelectionHighlight(root: HTMLElement) {
 }
 
 function collectTextSegments(root: HTMLElement): TextSegment[] {
+  // This walker defines the canonical rendered-text coordinate space used by
+  // both persisted annotations and live selection capture. Keep its inclusion
+  // rules stable or stored offsets will no longer point at the intended text.
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       if (!(node instanceof Text)) return NodeFilter.FILTER_REJECT;
@@ -119,6 +140,10 @@ function wrapTextSegments(
   endOffset: number,
   makeSpan: () => HTMLSpanElement,
 ) {
+  // Callers must pass segments collected from the current DOM state. This
+  // function mutates text nodes in place via splitText(), so reusing a segment
+  // list across multiple wraps can leave later operations pointing at stale
+  // node lengths or detached nodes.
   for (const seg of segments) {
     if (seg.end <= startOffset || seg.start >= endOffset) continue;
 
@@ -150,6 +175,8 @@ function applyHighlights(root: HTMLElement, annotations: Annotation[]) {
   );
 
   for (const annotation of sorted) {
+    // Recompute segments for each annotation because every wrap mutates the DOM
+    // text-node structure that later annotations need to target.
     wrapTextSegments(
       collectTextSegments(root),
       annotation.rendered_text_start_offset,
@@ -236,6 +263,9 @@ export function useStudyAnnotations(
         `span.study-annotation-highlight[data-annotation-id="${scrollToAnnotationId}"]`,
       );
       if (!span || !annotation) return;
+      // Treat scrollToAnnotationId as a one-shot trigger. We only clear it
+      // after a successful lookup so initial loads can retry until highlights
+      // exist, but later annotation state changes do not retrigger the jump.
       span.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
       const anchor = anchorFromElement(span);
       setAnnotationPopover({
@@ -304,10 +334,13 @@ export function useStudyAnnotations(
         return;
       }
 
-      // Compute offsets using the same text segment walker as applyHighlights/wrapTextSegments,
-      // so that back-to-top and other excluded nodes are not counted.
-      // We use range.isPointInRange to handle cases where startContainer/endContainer
-      // is an element node rather than a text node (e.g. cross-section selections).
+      // Convert the browser Range back into the same flat rendered-text
+      // coordinate space used by persisted annotations. The walker and its
+      // exclusions must stay in sync with applyHighlights().
+      //
+      // range.isPointInRange() handles selections whose endpoints are element
+      // nodes rather than text nodes, such as selections that cross markup
+      // boundaries or section structure.
       const segments = collectTextSegments(root);
       let start = -1;
       let end = -1;
