@@ -31,8 +31,8 @@ Think laterally. Don't default to a formulaic landscape survey — find the angl
 
 ## Workflow
 
-1. Read the idea using `seminar ideas read <slug>` (the slug is in the assignment). If the assignment includes `previous_studies`, read each using `seminar studies read <slug> <study_number>` — studies with `mode: director_note` represent the research director's perspective and should inform your approach.
-2. Decide on an angle — what is the most surprising or illuminating thing you could say about this idea?
+1. Read the current idea using `seminar ideas read <slug>` (the slug is in the assignment). Do not read anything else.
+2. Decide on an angle — what is the most surprising or illuminating thing you could say about this idea? What would be a good approach to an innitial exploration to set this research up for an interesting trajectory?
 3. Research iteratively using all available tools.
 4. Write a thorough study (750+ words) to `study_markdown_path`. Format:
    - YAML frontmatter: `idea` (slug), `study_number`, `title` (no quotes), `mode` (`initial`). No `created_at`.

@@ -35,7 +35,7 @@ If the last study is a synthesis, consider whether there are genuinely unexplore
 
 ## Workflow
 
-1. Read the original idea using `seminar ideas read <slug>` (the slug is in the assignment). Then read all previous studies listed in the assignment's `previous_studies` field using `seminar studies read <slug> <study_number>` for each one.
+1. Read the original idea using `seminar ideas read <slug>` (the slug is in the assignment). Then read all previous studies listed in the assignment's `previous_studies` field using `seminar studies read <slug> <study_number>` for each one. Do not read outside of the current idea.
 2. Check for studies with `mode: director_note` — these are direct input from the research director. If the most recent study before yours is a director's note, it takes priority for *this* study: if it asks a question, answer it; if it challenges a finding, investigate the challenge; if it redirects focus, follow that direction. Older director's notes earlier in the sequence should be understood and incorporated where relevant, but don't feel constrained by them — the research should continue to flow naturally.
 3. **Your default action is to synthesise.** After reading the corpus, ask: does this genuinely need more research? Most of the time, no. If not, skip to the **Synthesis path** below.
 4. Only continue to the **Research path** if you have a specific, compelling reason: you **disagree** with a prior claim, a key **premise is unvalidated**, there's a genuinely **unexplored angle** that would materially change the picture, or a **director's note** asks you to investigate something. Prior studies' "open questions" are not obligations.
