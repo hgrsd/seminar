@@ -42,11 +42,6 @@ class ResearchExecutor:
         self.on_state_change = on_state_change
 
     async def execute(self) -> None:
-        try:
-            self.study_service.reset_stale()
-        except Exception:
-            log.exception("Stale reset error")
-
         claim = self.study_service.claim(self.worker.claim_mode, worker_id=self.state.worker_id)
         if claim.status == "idle":
             return

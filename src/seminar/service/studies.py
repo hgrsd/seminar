@@ -120,25 +120,30 @@ class StudyService:
         title = title.strip()
 
         with self.connect() as conn:
-            updates = {"completed_at": completed_at, "title": title, "filename": study_filename, "body": body}
-            if mode is not None:
-                updates["mode"] = mode
-            set_clause = ", ".join(f"{k} = ?" for k in updates)
-            conn.execute(
-                f"UPDATE studies SET {set_clause} WHERE idea_slug = ? AND study_number = ?",
-                (*updates.values(), slug, study_number),
-            )
-            mode_row = conn.execute(
-                "SELECT mode FROM studies WHERE idea_slug = ? AND study_number = ?",
-                (slug, study_number),
-            ).fetchone()
+            try:
+                conn.execute("BEGIN IMMEDIATE")
+                updates = {"completed_at": completed_at, "title": title, "filename": study_filename, "body": body}
+                if mode is not None:
+                    updates["mode"] = mode
+                set_clause = ", ".join(f"{k} = ?" for k in updates)
+                conn.execute(
+                    f"UPDATE studies SET {set_clause} WHERE idea_slug = ? AND study_number = ?",
+                    (*updates.values(), slug, study_number),
+                )
+                mode_row = conn.execute(
+                    "SELECT mode FROM studies WHERE idea_slug = ? AND study_number = ?",
+                    (slug, study_number),
+                ).fetchone()
 
-            new_state = IdeaState.FOLLOW_UP_RESEARCH if mode_row and mode_row["mode"] != "initial_exploration" else IdeaState.INITIAL_EXPLORATION
-            conn.execute(
-                "UPDATE ideas SET current_state = ?, last_studied = ?, locked_by = NULL WHERE slug = ? AND current_state != ?",
-                (new_state, completed_at, slug, IdeaState.DONE),
-            )
-            conn.commit()
+                new_state = IdeaState.FOLLOW_UP_RESEARCH if mode_row and mode_row["mode"] != "initial_exploration" else IdeaState.INITIAL_EXPLORATION
+                conn.execute(
+                    "UPDATE ideas SET current_state = ?, last_studied = ?, locked_by = NULL WHERE slug = ? AND current_state != ?",
+                    (new_state, completed_at, slug, IdeaState.DONE),
+                )
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
 
     def for_idea(self, slug: str) -> list[StudyDetail]:
         """Return studies for an idea with their content."""
@@ -181,31 +186,9 @@ class StudyService:
 
     def reset_orphaned(self) -> list[str]:
         """Clear all in-progress state unconditionally. Called on startup to clean up after unclean shutdown."""
-        result = self._delete_incomplete(
-            where_clause="completed_at IS NULL",
-            params=(),
-        )
-        workers_dir = self.scratch_dir / "workers"
-        if workers_dir.exists():
-            shutil.rmtree(workers_dir, ignore_errors=True)
-        with self.connect() as conn:
-            conn.execute("UPDATE ideas SET locked_by = NULL WHERE locked_by IS NOT NULL")
-            conn.commit()
-        return result
-
-    def reset_stale(self, timeout_minutes: int = 60) -> list[str]:
-        """Clean up stale claims by removing incomplete study rows and clearing locks."""
-        return self._delete_incomplete(
-            where_clause="completed_at IS NULL AND julianday('now') - julianday(started_at) > ? / 1440.0",
-            params=(timeout_minutes,),
-        )
-
-    def _delete_incomplete(self, where_clause: str, params: tuple) -> list[str]:
-        """Delete incomplete study rows and unlock their ideas."""
         with self.connect() as conn:
             rows = conn.execute(
-                f"SELECT idea_slug, study_number FROM studies WHERE {where_clause}",
-                params,
+                "SELECT idea_slug, study_number FROM studies WHERE completed_at IS NULL"
             ).fetchall()
             to_delete = [(r["idea_slug"], r["study_number"]) for r in rows]
 
@@ -215,15 +198,14 @@ class StudyService:
                     (slug, study_num),
                 )
 
-            all_slugs = list({s for s, _ in to_delete})
-            if all_slugs:
-                placeholders = ",".join("?" for _ in all_slugs)
-                conn.execute(
-                    f"UPDATE ideas SET locked_by = NULL WHERE slug IN ({placeholders})",
-                    all_slugs,
-                )
+            affected_slugs = list({s for s, _ in to_delete})
+            conn.execute("UPDATE ideas SET locked_by = NULL WHERE locked_by IS NOT NULL")
             conn.commit()
-        return all_slugs
+
+        workers_dir = self.scratch_dir / "workers"
+        if workers_dir.exists():
+            shutil.rmtree(workers_dir, ignore_errors=True)
+        return affected_slugs
 
     def add_director_note(self, slug: str, body: str) -> int:
         """Add a director's note as a study. Reopens done ideas and resets cooldown."""
