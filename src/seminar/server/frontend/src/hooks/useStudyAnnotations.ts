@@ -420,6 +420,8 @@ export function useStudyAnnotations(
     if (!(target instanceof Element)) return;
     const highlight = target.closest(".study-annotation-highlight") as HTMLElement | null;
     if (!highlight) return;
+    // Meta/Ctrl+click follows the link instead of opening the annotation popover
+    if (e.metaKey || e.ctrlKey) return;
     e.preventDefault();
     e.stopPropagation();
     const id = Number(highlight.dataset.annotationId);
