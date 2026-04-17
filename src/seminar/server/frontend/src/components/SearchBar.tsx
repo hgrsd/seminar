@@ -23,12 +23,6 @@ const TYPE_LABELS: Record<string, string> = {
   annotation: "Annotation",
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  idea: "var(--amber)",
-  study: "var(--violet)",
-  proposal: "var(--green)",
-  annotation: "var(--grey)",
-};
 
 function Highlight({ text, query }: { text: string; query: string }) {
   if (query.length < 2) return <>{text}</>;
@@ -132,7 +126,7 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
               className="search-result"
               onClick={() => handleSelect(r)}
             >
-              <span className="search-result-badge" style={{ background: TYPE_COLORS[r.type] }}>
+              <span className="search-result-badge">
                 {TYPE_LABELS[r.type]}
               </span>
               <span className="search-result-title"><Highlight text={r.title || r.slug} query={query} /></span>

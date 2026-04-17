@@ -23,14 +23,10 @@
   --grey: #9a9590;
   --amber: #b8860b;
   --violet: #6366a0;
-  --green: #6b8f71;
   --blue-tint: #edf2f5;
   --blue-tint-subtle: #f0f5f8;
-  --violet-tint: #eeedf5;
-  --green-tint: #edf3ee;
   --danger: #bf4940;
   --danger-bg-hover: #fdf0ef;
-  --gold-border: #c9a84c;
   --gold: #a08930;
   --gold-tint: #faf6e8;
   --code-pre-bg: #2c2c2c;
@@ -80,14 +76,10 @@
   --grey: #6e6e76;
   --amber: #d4a840;
   --violet: #8b8fd4;
-  --green: #7fb587;
   --blue-tint: #1e2530;
   --blue-tint-subtle: #1c2228;
-  --violet-tint: #22213a;
-  --green-tint: #1c2820;
   --danger: #e0625a;
   --danger-bg-hover: #2e1c1a;
-  --gold-border: #c9a84c;
   --gold: #d4c06a;
   --gold-tint: #2a2618;
   --code-pre-bg: #18181c;
@@ -659,7 +651,7 @@ textarea {
 
 .pedigree-link {
   font-size: 12px;
-  color: var(--violet);
+  color: var(--text-secondary);
   background: none;
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
@@ -670,7 +662,7 @@ textarea {
 
 .pedigree-link:hover {
   background: var(--bg);
-  border-color: var(--violet);
+  border-color: var(--text-muted);
 }
 
 .reading-pane-byline {
@@ -701,18 +693,18 @@ textarea {
 }
 
 .state-badge--active {
-  background: var(--blue-tint);
-  color: var(--amber);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
 }
 
 .state-badge--further {
-  background: var(--violet-tint);
-  color: var(--violet);
+  background: var(--bg-muted);
+  color: var(--text-secondary);
 }
 
 .state-badge--done {
-  background: var(--green-tint);
-  color: var(--green);
+  background: var(--bg-muted);
+  color: var(--text-muted);
 }
 
 .locked-indicator {
@@ -1190,10 +1182,10 @@ textarea {
   font-weight: 600;
   padding: 5px 10px;
   border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--accent) 32%, var(--border));
-  background: color-mix(in srgb, var(--surface) 82%, white);
-  color: var(--text);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-secondary);
+  box-shadow: var(--shadow);
 }
 
 /* ─── Director's Note Input ───────────────────────────── */
@@ -2136,8 +2128,8 @@ textarea {
 }
 
 .settings-tool-remove:hover {
-  color: var(--danger);
-  background: var(--danger-bg-hover);
+  color: var(--text);
+  background: var(--bg-muted);
 }
 
 .settings-tool-add {
@@ -2279,16 +2271,11 @@ textarea {
 }
 
 .search-result-badge {
-  display: inline-block;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--on-accent);
-  padding: 1px 6px;
-  border-radius: var(--radius-sm);
-  align-self: flex-start;
-  line-height: 1.4;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
 }
 
 .search-result-title {

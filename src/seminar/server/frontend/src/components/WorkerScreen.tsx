@@ -224,9 +224,9 @@ function WorkerDetail({
           <div className="worker-detail-title-row">
             <h2 className="worker-detail-title">Worker #{worker.id}</h2>
           </div>
-          <span className="worker-detail-type">{workerTypeLabel(worker.type)}</span>
           <div className="worker-detail-meta-row">
-            <span className="worker-detail-meta">{displayProvider(worker.provider)}</span>
+            <span className="worker-detail-type">{workerTypeLabel(worker.type)}</span>
+            <span className="worker-detail-type">{displayProvider(worker.provider)}</span>
           </div>
         </div>
         <div className="worker-detail-actions">
