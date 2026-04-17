@@ -48,12 +48,12 @@ class SearchService:
                 (like_pattern, like_pattern),
             ).fetchall()
             for row in annotation_rows:
-                score, snippet = self._score(q, row["rendered_text"] or "", row["body"] or "")
+                score, _ = self._score(q, row["body"] or "", row["rendered_text"] or "")
                 scored.append((score, SearchHit(
                     type="annotation",
                     slug=row["idea_slug"],
-                    title=row["rendered_text"] or "",
-                    snippet=snippet,
+                    title=row["body"] or "",
+                    snippet=row["rendered_text"] or "",
                     study_number=row["study_number"],
                     annotation_id=row["id"],
                 )))
