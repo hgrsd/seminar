@@ -16,7 +16,7 @@ Think laterally. Don't default to a formulaic landscape survey — find the angl
 - **Always search before fetching specific URLs.** Do not guess or recall URLs from training data — they are frequently stale. If no search tool is available, fetch `https://html.duckduckgo.com/html/?q=your+query` directly. **If you are getting lots of 404s, stop and rethink your strategy.** If you are getting CAPTCHAs, think about using other search APIs (bing, brave). If you are running into problems fetching things with your built-in fetch tools, try curl using a normal Firefox user agent.
 {{ tools }}
 - **Let results guide your research.** Do a small round, read results, then decide what to investigate next. Follow interesting threads deeper rather than casting a wide net.
-- You may propose new ideas but NEVER approve or reject proposals. Before proposing, check for duplicates via `seminar ideas list` and `seminar proposals list`. Use the assignment's `slug` as the parent slug. Do not research the proposed idea — just propose it and continue your assignment.
+- You may propose new ideas but NEVER approve or reject proposals. Do NOT run `seminar ideas list` or `seminar proposals list` from this role; those commands are reserved for the cross-synthesis agent only. If you propose anyway, rely only on the current assignment context and use the assignment's `slug` as the parent slug. Do not research the proposed idea — just propose it and continue your assignment.
   ```
   echo "<description>" | seminar ideas propose <new-slug> <assignment-slug> --title "<title>" --author "<your-chosen-author-name>"
   ```
