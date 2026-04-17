@@ -165,6 +165,7 @@ export function useStudyAnnotations(
   ideaSlug: string | null | undefined,
   selectedStudy: number | null,
   activeStudyContent: string | null | undefined,
+  scrollToAnnotationId: number | null = null,
 ) {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [annotationLoading, setAnnotationLoading] = useState(false);
@@ -207,6 +208,28 @@ export function useStudyAnnotations(
       }
     };
   }, [activeStudyContent, annotations, annotationPopover]);
+
+  useEffect(() => {
+    if (!scrollToAnnotationId || !studyProseRef.current || annotations.length === 0) return;
+    const annotation = annotations.find((a) => a.id === scrollToAnnotationId);
+    const span = studyProseRef.current.querySelector(
+      `span.study-annotation-highlight[data-annotation-id="${scrollToAnnotationId}"]`,
+    );
+    if (!span || !annotation) return;
+    span.scrollIntoView({ behavior: "smooth", block: "center" });
+    const anchor = anchorFromPointer(
+      window.innerWidth / 2,
+      window.innerHeight / 2,
+    );
+    setAnnotationPopover({
+      mode: "view",
+      x: anchor.x,
+      y: anchor.y,
+      placement: anchor.placement,
+      annotation,
+    });
+    setAnnotationBody(annotation.body);
+  }, [scrollToAnnotationId, annotations]);
 
   useEffect(() => {
     if (!annotationPopover) return;

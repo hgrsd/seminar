@@ -27,6 +27,7 @@ export default function App() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [selectedStudy, setSelectedStudy] = useState<number | null>(null);
   const [selectedProposal, setSelectedProposal] = useState<string | null>(null);
+  const [scrollToAnnotationId, setScrollToAnnotationId] = useState<number | null>(null);
   const [workerScreenOpen, setWorkerScreenOpen] = useState(false);
   const [initialWorkerId, setInitialWorkerId] = useState<number | null>(null);
   const [showNewIdea, setShowNewIdea] = useState(false);
@@ -62,16 +63,25 @@ export default function App() {
         setSelectedSlug(target.slug);
         setSelectedStudy(null);
         setSelectedProposal(null);
+        setScrollToAnnotationId(null);
         break;
       case "study":
         setSelectedSlug(target.slug);
         setSelectedStudy(target.study_number);
         setSelectedProposal(null);
+        setScrollToAnnotationId(null);
         break;
       case "proposal":
         setSelectedProposal(target.slug);
         setSelectedSlug(null);
         setSelectedStudy(null);
+        setScrollToAnnotationId(null);
+        break;
+      case "annotation":
+        setSelectedSlug(target.slug);
+        setSelectedStudy(target.study_number);
+        setSelectedProposal(null);
+        setScrollToAnnotationId(target.annotation_id);
         break;
     }
     setWorkerScreenOpen(false);
@@ -155,6 +165,7 @@ export default function App() {
             activeWorkers={activeWorkers}
             onWorkerClick={(workerId) => { setInitialWorkerId(workerId); setWorkerScreenOpen(true); }}
             selectedStudy={selectedStudy}
+            scrollToAnnotationId={scrollToAnnotationId}
             studiesCache={studiesCache}
             fetchStudies={fetchStudies}
             onNavigate={navigateTo}

@@ -110,7 +110,8 @@ export interface ActivityEvent {
 export type NavigationTarget =
   | { type: "idea"; slug: string }
   | { type: "study"; slug: string; study_number: number }
-  | { type: "proposal"; slug: string };
+  | { type: "proposal"; slug: string }
+  | { type: "annotation"; slug: string; study_number: number; annotation_id: number };
 
 export interface SnapshotState {
   ideas: Idea[];

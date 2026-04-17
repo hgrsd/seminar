@@ -43,6 +43,21 @@ class SearchService:
                 score, snippet = self._score(q, row["title"] or "", row["body"] or "")
                 scored.append((score, SearchHit(type="proposal", slug=row["slug"], title=row["title"] or "", snippet=snippet)))
 
+            annotation_rows = conn.execute(
+                "SELECT id, idea_slug, study_number, rendered_text, body FROM annotations WHERE rendered_text LIKE ? OR body LIKE ?",
+                (like_pattern, like_pattern),
+            ).fetchall()
+            for row in annotation_rows:
+                score, snippet = self._score(q, row["rendered_text"] or "", row["body"] or "")
+                scored.append((score, SearchHit(
+                    type="annotation",
+                    slug=row["idea_slug"],
+                    title=row["rendered_text"] or "",
+                    snippet=snippet,
+                    study_number=row["study_number"],
+                    annotation_id=row["id"],
+                )))
+
         scored.sort(key=lambda x: x[0], reverse=True)
         return [entry for _, entry in scored[:25]]
 

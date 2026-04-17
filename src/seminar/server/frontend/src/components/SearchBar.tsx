@@ -2,11 +2,12 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { NavigationTarget } from "../types";
 
 interface SearchResult {
-  type: "idea" | "study" | "proposal";
+  type: "idea" | "study" | "proposal" | "annotation";
   slug: string;
   title: string;
   snippet: string;
   study_number?: number;
+  annotation_id?: number;
 }
 
 interface Props {
@@ -19,12 +20,14 @@ const TYPE_LABELS: Record<string, string> = {
   idea: "Idea",
   study: "Study",
   proposal: "Proposal",
+  annotation: "Annotation",
 };
 
 const TYPE_COLORS: Record<string, string> = {
   idea: "var(--state-active)",
   study: "var(--state-further)",
   proposal: "var(--state-done)",
+  annotation: "var(--state-not-started)",
 };
 
 function Highlight({ text, query }: { text: string; query: string }) {
@@ -98,6 +101,8 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
       onNavigate({ type: "study", slug: result.slug, study_number: result.study_number });
     } else if (result.type === "proposal") {
       onNavigate({ type: "proposal", slug: result.slug });
+    } else if (result.type === "annotation" && result.study_number != null && result.annotation_id != null) {
+      onNavigate({ type: "annotation", slug: result.slug, study_number: result.study_number, annotation_id: result.annotation_id });
     }
   };
 

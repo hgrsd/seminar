@@ -171,3 +171,4 @@ class SearchHit:
     title: str
     snippet: str
     study_number: int | None = None
+    annotation_id: int | None = None
