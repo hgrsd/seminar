@@ -47,19 +47,19 @@ class StudyServiceTests(unittest.TestCase):
         )
 
         self.assertEqual(
-            (
-                claim,
-                persisted,
-                studies,
-            ),
-            (
-                ClaimResult(status="claimed", slug="oldest", study_number=1),
-                [
-                    ("newest", None, IdeaState.NOT_STARTED),
-                    ("oldest", 7, IdeaState.NOT_STARTED),
-                ],
-                [("oldest", 1, "initial_exploration", None)],
-            ),
+            claim,
+            ClaimResult(status="claimed", slug="oldest", study_number=1),
+        )
+        self.assertEqual(
+            persisted,
+            [
+                ("newest", None, IdeaState.NOT_STARTED),
+                ("oldest", 7, IdeaState.NOT_STARTED),
+            ],
+        )
+        self.assertEqual(
+            studies,
+            [("oldest", 1, "initial_exploration", None)],
         )
 
     def test_claim_further_skips_cooldown_and_returns_completed_study_history(self) -> None:
@@ -124,27 +124,27 @@ Study body
         self._study_service().complete("topic", 1, str(markdown_path), title="Published")
 
         self.assertEqual(
-            (
-                self._idea_service().status_summary("topic"),
-                self._study_service().for_idea("topic"),
-                self._study_service().get_filename("topic", 1),
-            ),
-            (
-                self._idea_status("topic", IdeaState.INITIAL_EXPLORATION),
-                [
-                    StudyDetail(
-                        title="Published",
-                        mode="initial_exploration",
-                        study_number=1,
-                        created_at=self._require_fetchval(
-                            "SELECT completed_at FROM studies WHERE idea_slug = ? AND study_number = ?",
-                            ("topic", 1),
-                        ),
-                        content="Study body",
-                    )
-                ],
-                "study.md",
-            ),
+            self._idea_service().status_summary("topic"),
+            self._idea_status("topic", IdeaState.INITIAL_EXPLORATION),
+        )
+        self.assertEqual(
+            self._study_service().for_idea("topic"),
+            [
+                StudyDetail(
+                    title="Published",
+                    mode="initial_exploration",
+                    study_number=1,
+                    created_at=self._require_fetchval(
+                        "SELECT completed_at FROM studies WHERE idea_slug = ? AND study_number = ?",
+                        ("topic", 1),
+                    ),
+                    content="Study body",
+                )
+            ],
+        )
+        self.assertEqual(
+            self._study_service().get_filename("topic", 1),
+            "study.md",
         )
 
     def test_reset_orphaned_removes_incomplete_studies_unlocks_ideas_and_clears_worker_scratch(self) -> None:
@@ -166,23 +166,27 @@ Study body
 
         cleaned = self._study_service().reset_orphaned()
 
+        persisted_ideas = self._fetchall(
+            "SELECT slug, locked_by FROM ideas ORDER BY slug"
+        )
+        persisted_studies = self._fetchall(
+            "SELECT idea_slug, study_number FROM studies ORDER BY idea_slug, study_number"
+        )
+
         self.assertEqual(
-            (
-                cleaned,
-                self._fetchall(
-                    "SELECT slug, locked_by FROM ideas ORDER BY slug"
-                ),
-                self._fetchall(
-                    "SELECT idea_slug, study_number FROM studies ORDER BY idea_slug, study_number"
-                ),
-                workers_dir.exists(),
-            ),
-            (
-                ["topic"],
-                [("topic", None)],
-                [],
-                False,
-            ),
+            cleaned,
+            ["topic"],
+        )
+        self.assertEqual(
+            persisted_ideas,
+            [("topic", None)],
+        )
+        self.assertEqual(
+            persisted_studies,
+            [],
+        )
+        self.assertFalse(
+            workers_dir.exists(),
         )
 
     def _insert_idea(
