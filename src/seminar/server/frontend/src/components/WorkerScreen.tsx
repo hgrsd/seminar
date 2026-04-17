@@ -226,7 +226,7 @@ function WorkerDetail({
           </div>
           <span className="worker-detail-type">{workerTypeLabel(worker.type)}</span>
           <div className="worker-detail-meta-row">
-            <span className="worker-detail-meta">{worker.provider}</span>
+            <span className="worker-detail-meta">{displayProvider(worker.provider)}</span>
           </div>
         </div>
         <div className="worker-detail-actions">
@@ -321,7 +321,7 @@ function HistoryLogView({
           <span className="worker-detail-type">{workerTypeLabel(run.worker_type)}</span>
         </div>
         <div className="worker-detail-meta-row">
-          <span className="worker-detail-meta">{run.provider}</span>
+          <span className="worker-detail-meta">{displayProvider(run.provider)}</span>
           {run.cost_usd != null && (
             <span className="worker-detail-meta">{formatCost(run.cost_usd)}</span>
           )}
@@ -385,6 +385,17 @@ function formatDuration(ms: number): string {
 
 function formatCost(usd: number): string {
   return `$${usd.toFixed(2)}`;
+}
+
+function displayProvider(provider: string): string {
+  switch (provider) {
+    case "ClaudeCodeProvider":
+      return "claude-code";
+    case "CodexProvider":
+      return "codex";
+    default:
+      return provider;
+  }
 }
 
 /* ── Global History ────────────────────────────────────── */
@@ -518,7 +529,7 @@ function GlobalHistory({
               <div className="history-entry-footer">
                 <span className="history-entry-meta">
                   Worker #{run.worker_id}
-                  {run.provider && <> &middot; {run.provider}</>}
+                  {run.provider && <> &middot; {displayProvider(run.provider)}</>}
                   {run.study_number != null && <> &middot; Study #{run.study_number}</>}
                   {run.num_turns != null && <> &middot; {run.num_turns} turns</>}
                 </span>
