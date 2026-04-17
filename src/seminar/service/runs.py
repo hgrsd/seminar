@@ -124,7 +124,7 @@ class RunService:
             rows = conn.execute(
                 """
                 SELECT
-                    r.id, r.worker_id, r.worker_type, r.slug, r.study_number,
+                    r.id, r.worker_id, r.worker_type, r.provider, r.slug, r.study_number,
                     s.title AS study_title, s.filename AS study_filename,
                     r.started_at, r.finished_at, r.exit_code, r.timed_out,
                     r.duration_ms, r.cost_usd, r.cost_is_estimate,
@@ -152,6 +152,7 @@ class RunService:
                 id=row["id"],
                 worker_id=row["worker_id"],
                 worker_type=row["worker_type"],
+                provider=row["provider"],
                 slug=row["slug"],
                 study_number=row["study_number"],
                 study_title=row["study_title"],

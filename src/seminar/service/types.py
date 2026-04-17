@@ -120,6 +120,7 @@ class WorkerRun:
     id: int
     worker_id: int
     worker_type: str
+    provider: str
     slug: str | None
     study_number: int | None
     study_title: str | None

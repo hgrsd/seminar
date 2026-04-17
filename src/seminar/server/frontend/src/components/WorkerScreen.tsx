@@ -225,6 +225,9 @@ function WorkerDetail({
             <h2 className="worker-detail-title">Worker #{worker.id}</h2>
           </div>
           <span className="worker-detail-type">{workerTypeLabel(worker.type)}</span>
+          <div className="worker-detail-meta-row">
+            <span className="worker-detail-meta">{worker.provider}</span>
+          </div>
         </div>
         <div className="worker-detail-actions">
           {isActive(worker) && (
@@ -318,6 +321,7 @@ function HistoryLogView({
           <span className="worker-detail-type">{workerTypeLabel(run.worker_type)}</span>
         </div>
         <div className="worker-detail-meta-row">
+          <span className="worker-detail-meta">{run.provider}</span>
           {run.cost_usd != null && (
             <span className="worker-detail-meta">{formatCost(run.cost_usd)}</span>
           )}
@@ -514,6 +518,7 @@ function GlobalHistory({
               <div className="history-entry-footer">
                 <span className="history-entry-meta">
                   Worker #{run.worker_id}
+                  {run.provider && <> &middot; {run.provider}</>}
                   {run.study_number != null && <> &middot; Study #{run.study_number}</>}
                   {run.num_turns != null && <> &middot; {run.num_turns} turns</>}
                 </span>

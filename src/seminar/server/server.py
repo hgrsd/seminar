@@ -96,7 +96,7 @@ async def lifespan(app: FastAPI):
         on_event=hub.on_event,
         on_worker_state=lambda ws: hub.publish_event(
             "worker_upserted",
-            workers.serialize_worker(ws.worker_id, ws),
+            workers.serialize_worker(ws.worker_id, ws, app.state.cfg.provider),
         ),
         on_worker_removed=lambda wid: hub.publish_event(
             "worker_removed",
@@ -123,7 +123,7 @@ async def lifespan(app: FastAPI):
 def _snapshot_payload(app: FastAPI) -> dict:
     return {
         "ideas": [asdict(s) for s in app.state.idea_service.status_all()],
-        "workers": workers.serialize_workers(app.state.pool),
+        "workers": workers.serialize_workers(app.state.pool, app.state.cfg.provider),
         "activity": app.state.hub.activities,
         "study_counts": app.state.study_service.counts(),
         "proposals": [asdict(p) for p in app.state.proposal_service.list_all()],

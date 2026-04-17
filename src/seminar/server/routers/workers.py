@@ -29,14 +29,15 @@ class SpawnWorkerRequest(BaseModel):
     type: str
 
 
-def serialize_workers(pool: WorkerPool) -> list[dict]:
-    return [serialize_worker(wid, ws) for wid, ws in sorted(pool.states.items())]
+def serialize_workers(pool: WorkerPool, provider: str) -> list[dict]:
+    return [serialize_worker(wid, ws, provider) for wid, ws in sorted(pool.states.items())]
 
 
-def serialize_worker(worker_id: int, ws) -> dict:
+def serialize_worker(worker_id: int, ws, provider: str) -> dict:
     return {
         "id": worker_id,
         "type": ws.worker_type.run_type.value,
+        "provider": provider,
         "status": ws.status.value,
         "current_slug": ws.current_slug,
         "started_at": ws.started_at_wall,
@@ -45,8 +46,11 @@ def serialize_worker(worker_id: int, ws) -> dict:
 
 
 @router.get("/workers")
-def get_workers(pool: WorkerPool = Depends(get_pool)):
-    return serialize_workers(pool)
+def get_workers(
+    pool: WorkerPool = Depends(get_pool),
+    cfg: Config = Depends(get_cfg),
+):
+    return serialize_workers(pool, cfg.provider)
 
 
 @router.post("/workers")

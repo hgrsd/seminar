@@ -40,6 +40,7 @@ export interface StudyFile {
 export interface Worker {
   id: number;
   type: "initial_exploration" | "follow_up_research" | "connective_research";
+  provider: string;
   status: "idle" | "researching";
   current_slug: string | null;
   started_at: string | null;
@@ -58,6 +59,7 @@ export interface RunEntry {
   id: number;
   worker_id: number;
   worker_type: string;
+  provider: string;
   slug: string | null;
   study_number: number | null;
   study_title: string | null;
