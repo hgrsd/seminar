@@ -2,12 +2,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { NavigationTarget } from "../types";
 
 interface SearchResult {
-  type: "idea" | "study" | "proposal" | "annotation";
-  slug: string;
+  type: "idea" | "study" | "proposal" | "annotation" | "message";
+  slug: string | null;
   title: string;
   snippet: string;
   study_number?: number;
   annotation_id?: number;
+  message_id?: number;
 }
 
 interface Props {
@@ -21,6 +22,7 @@ const TYPE_LABELS: Record<string, string> = {
   study: "Study",
   proposal: "Proposal",
   annotation: "Annotation",
+  message: "Message",
 };
 
 
@@ -90,13 +92,15 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
   const handleSelect = (result: SearchResult) => {
     onClose();
     if (result.type === "idea") {
-      onNavigate({ type: "idea", slug: result.slug });
-    } else if (result.type === "study" && result.study_number != null) {
+      if (result.slug != null) onNavigate({ type: "idea", slug: result.slug });
+    } else if (result.type === "study" && result.slug != null && result.study_number != null) {
       onNavigate({ type: "study", slug: result.slug, study_number: result.study_number });
-    } else if (result.type === "proposal") {
+    } else if (result.type === "proposal" && result.slug != null) {
       onNavigate({ type: "proposal", slug: result.slug });
-    } else if (result.type === "annotation" && result.study_number != null && result.annotation_id != null) {
+    } else if (result.type === "annotation" && result.slug != null && result.study_number != null && result.annotation_id != null) {
       onNavigate({ type: "annotation", slug: result.slug, study_number: result.study_number, annotation_id: result.annotation_id });
+    } else if (result.type === "message" && result.message_id != null) {
+      onNavigate({ type: "message", id: result.message_id });
     }
   };
 
@@ -109,7 +113,7 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
           ref={inputRef}
           className="search-modal-input"
           type="text"
-          placeholder="Search ideas, studies, proposals..."
+          placeholder="Search ideas, studies, proposals, messages..."
           value={query}
           onChange={(e) => handleChange(e.target.value)}
         />
@@ -122,7 +126,7 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
           )}
           {results.map((r, i) => (
             <button
-              key={`${r.slug}-${r.study_number ?? ""}-${i}`}
+              key={`${r.type}-${r.message_id ?? r.slug ?? "none"}-${r.study_number ?? ""}-${i}`}
               className="search-result"
               onClick={() => handleSelect(r)}
             >

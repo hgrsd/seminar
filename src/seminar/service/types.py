@@ -187,8 +187,9 @@ class WorkerRun:
 @dataclass
 class SearchHit:
     type: str
-    slug: str
+    slug: str | None
     title: str
     snippet: str
     study_number: int | None = None
     annotation_id: int | None = None
+    message_id: int | None = None

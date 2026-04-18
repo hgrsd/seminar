@@ -1,4 +1,4 @@
-"""Full-text search across ideas, studies, and proposals."""
+"""Full-text search across ideas, studies, proposals, annotations, and messages."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ class SearchService:
         self.connect = connect
 
     def search(self, query: str) -> list[SearchHit]:
-        """Search across ideas, studies, and proposals by title and body content."""
+        """Search across corpus records by title and body content."""
         q = query.lower()
         scored: list[tuple[float, SearchHit]] = []
 
@@ -56,6 +56,20 @@ class SearchService:
                     snippet=row["rendered_text"] or "",
                     study_number=row["study_number"],
                     annotation_id=row["id"],
+                )))
+
+            message_rows = conn.execute(
+                "SELECT id, idea_slug, title, body FROM messages WHERE title LIKE ? OR body LIKE ?",
+                (like_pattern, like_pattern),
+            ).fetchall()
+            for row in message_rows:
+                score, snippet = self._score(q, row["title"] or "", row["body"] or "")
+                scored.append((score, SearchHit(
+                    type="message",
+                    slug=row["idea_slug"],
+                    title=row["title"] or "",
+                    snippet=snippet,
+                    message_id=row["id"],
                 )))
 
         scored.sort(key=lambda x: x[0], reverse=True)
