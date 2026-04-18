@@ -133,7 +133,7 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
               <span className="search-result-badge">
                 {TYPE_LABELS[r.type]}
               </span>
-              <span className="search-result-title"><Highlight text={r.title || r.slug} query={query} /></span>
+              <span className="search-result-title"><Highlight text={r.title || r.slug || ""} query={query} /></span>
               {r.snippet && (
                 <span className="search-result-snippet"><Highlight text={r.snippet} query={query} /></span>
               )}
