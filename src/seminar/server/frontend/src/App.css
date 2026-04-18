@@ -27,6 +27,8 @@
   --blue-tint-subtle: #f0f5f8;
   --danger: #bf4940;
   --danger-bg-hover: #fdf0ef;
+  --success: #2f8a57;
+  --success-tint: #edf7f0;
   --gold: #a08930;
   --gold-tint: #faf6e8;
   --code-pre-bg: #2c2c2c;
@@ -80,6 +82,8 @@
   --blue-tint-subtle: #1c2228;
   --danger: #e0625a;
   --danger-bg-hover: #2e1c1a;
+  --success: #67c18c;
+  --success-tint: #1f3027;
   --gold: #d4c06a;
   --gold-tint: #2a2618;
   --code-pre-bg: #18181c;
@@ -461,6 +465,35 @@ textarea {
 
 .sidebar-section-items {
   padding-bottom: 4px;
+}
+
+.sidebar-subsection {
+  padding-bottom: 2px;
+}
+
+.sidebar-subsection-header {
+  padding-left: 16px;
+}
+
+.sidebar-subsection-header:hover {
+  background: var(--bg);
+}
+
+.sidebar-subsection-header--empty {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.sidebar-subsection-header--empty:hover {
+  background: transparent;
+}
+
+.sidebar-subsection-arrow {
+  font-size: 18px;
+}
+
+.sidebar-subsection-items .sidebar-study-item {
+  padding-left: 44px;
 }
 
 .sidebar-item {
@@ -2172,13 +2205,13 @@ textarea {
 /* ─── Inbox ───────────────────────────────────────────── */
 
 .sidebar-section-count--inbox {
-  background: var(--gold);
+  background: var(--success);
   color: var(--on-accent);
 }
 
 .state-badge--inbox {
-  background: var(--gold-tint);
-  color: var(--gold);
+  background: var(--success-tint);
+  color: var(--success);
 }
 
 /* ─── Search Trigger & Modal ─────────────────────────────── */
