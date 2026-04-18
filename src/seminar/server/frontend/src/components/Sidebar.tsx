@@ -29,7 +29,7 @@ const SECTIONS: SectionConfig[] = [
   { key: "done", label: "Well-understood" },
 ];
 
-const ALL_SECTION_KEYS = ["inbox", "inbox_unread", "inbox_read", "not_started", "active", "done"];
+const ALL_SECTION_KEYS = ["inbox", "inbox_unread", "inbox_read", "rejected_proposals", "not_started", "active", "done"];
 
 type SortField = "name" | "created" | "activity";
 type SortDir = "asc" | "desc";
@@ -61,6 +61,7 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
     inbox: true,
     inbox_unread: false,
     inbox_read: true,
+    rejected_proposals: true,
     not_started: true,
     active: true,
     done: true,
@@ -99,7 +100,11 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
 
   useEffect(() => {
     if (selectedProposal) {
-      setCollapsed((prev) => ({ ...prev, inbox: false, inbox_unread: false }));
+      const selected = proposals.find((proposal) => proposal.slug === selectedProposal);
+      if (!selected) return;
+      setCollapsed((prev) => selected.status === "rejected"
+        ? { ...prev, rejected_proposals: false }
+        : { ...prev, inbox: false, inbox_unread: false });
       return;
     }
     if (!selectedMessage) return;
@@ -110,7 +115,7 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
       inbox: false,
       [selected.status === "read" ? "inbox_read" : "inbox_unread"]: false,
     }));
-  }, [messages, selectedMessage, selectedProposal]);
+  }, [messages, proposals, selectedMessage, selectedProposal]);
 
   const toggleAllSections = (expand: boolean) => {
     setCollapsed(Object.fromEntries(ALL_SECTION_KEYS.map((k) => [k, !expand])));
@@ -336,6 +341,42 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
             </div>
           );
         })}
+
+        {(() => {
+          const rejectedProposals = proposals
+            .filter((p) => p.status === "rejected")
+            .sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
+          const isCollapsed = collapsed.rejected_proposals ?? false;
+
+          return (
+            <div className="sidebar-section">
+              <button
+                className={`sidebar-section-header ${rejectedProposals.length === 0 ? "sidebar-section-header--empty" : ""}`}
+                onClick={() => rejectedProposals.length > 0 && toggleSection("rejected_proposals")}
+              >
+                <span className="sidebar-section-arrow">
+                  {rejectedProposals.length === 0 ? "" : isCollapsed ? "\u25B8" : "\u25BE"}
+                </span>
+                <span className="sidebar-section-label">Rejected Proposals</span>
+                <span className="sidebar-section-count">{rejectedProposals.length}</span>
+              </button>
+              {!isCollapsed && rejectedProposals.length > 0 && (
+                <div className="sidebar-section-items">
+                  {rejectedProposals.map((proposal) => (
+                    <button
+                      key={`rejected-proposal-${proposal.slug}`}
+                      id={`sidebar-rejected-proposal-${proposal.slug}`}
+                      className={`sidebar-study-item ${proposal.slug === selectedProposal ? "sidebar-study-item--selected" : ""}`}
+                      onClick={() => onNavigate({ type: "proposal", slug: proposal.slug })}
+                    >
+                      <span className="sidebar-study-name">{proposal.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
       </div>
       <div className="sidebar-bottom">
