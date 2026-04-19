@@ -883,29 +883,39 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
 
           {!loading && (
             <section className="director-note-section">
-              <div className="studies-divider">
-                <span>Threads ({ideaThreads.length})</span>
-              </div>
-              <div className="idea-thread-list">
-                {ideaThreads.map((thread) => (
+              <div className="idea-thread-section-card">
+                <div className="idea-thread-section-header">
+                  <div className="studies-divider studies-divider--compact">
+                    <span>Threads ({ideaThreads.length})</span>
+                  </div>
                   <button
-                    key={thread.id}
-                    className="sidebar-study-item"
-                    onClick={() => onNavigate({ type: "thread", id: thread.id })}
+                    className="action-btn btn--primary"
+                    onClick={() => onStartThread(idea.slug, `About ${idea.title}`)}
                   >
-                    <span className="sidebar-study-name">{thread.title}</span>
+                    New Thread
                   </button>
-                ))}
-                {ideaThreads.length === 0 && (
-                  <div className="activity-empty">No threads for this idea yet</div>
-                )}
+                </div>
+                <div className="idea-thread-list">
+                  {ideaThreads.map((thread) => (
+                    <button
+                      key={thread.id}
+                      className="idea-thread-item"
+                      onClick={() => onNavigate({ type: "thread", id: thread.id })}
+                    >
+                      <div className="idea-thread-item-main">
+                        <span className="idea-thread-item-title">{thread.title}</span>
+                        <span className="idea-thread-item-meta">
+                          {thread.status === "waiting_on_user" ? "Waiting on you" : thread.status === "waiting_on_agent" ? "Waiting on agent" : "Closed"}
+                        </span>
+                      </div>
+                      {thread.status === "waiting_on_user" && <span className="sidebar-thread-dot idea-thread-item-dot" aria-hidden="true" />}
+                    </button>
+                  ))}
+                  {ideaThreads.length === 0 && (
+                    <div className="activity-empty">No threads for this idea yet</div>
+                  )}
+                </div>
               </div>
-              <button
-                className="action-btn btn--primary director-note-submit"
-                onClick={() => onStartThread(idea.slug, `About ${idea.title}`)}
-              >
-                Start Thread About This Idea
-              </button>
             </section>
           )}
 

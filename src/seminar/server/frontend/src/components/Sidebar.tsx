@@ -30,8 +30,7 @@ const SECTIONS: SectionConfig[] = [
 ];
 
 const ALL_SECTION_KEYS = [
-  "threads_waiting_on_user",
-  "threads_waiting_on_agent",
+  "threads_open",
   "threads_closed",
   "proposals_pending",
   "rejected_proposals",
@@ -81,8 +80,7 @@ export function Sidebar({
   onCollapse,
 }: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    threads_waiting_on_user: false,
-    threads_waiting_on_agent: false,
+    threads_open: false,
     threads_closed: true,
     proposals_pending: false,
     rejected_proposals: true,
@@ -132,7 +130,7 @@ export function Sidebar({
     if (!selectedThread) return;
     const selected = threads.find((thread) => thread.id === selectedThread);
     if (!selected) return;
-    setCollapsed((prev) => ({ ...prev, [`threads_${selected.status}`]: false }));
+    setCollapsed((prev) => ({ ...prev, [selected.status === "closed" ? "threads_closed" : "threads_open"]: false }));
   }, [proposals, selectedProposal, selectedThread, threads]);
 
   const toggleAllSections = (expand: boolean) => {
@@ -161,13 +159,13 @@ export function Sidebar({
       className={`sidebar-study-item ${thread.id === selectedThread ? "sidebar-study-item--selected" : ""}`}
       onClick={() => onNavigate({ type: "thread", id: thread.id })}
     >
+      {thread.status === "waiting_on_user" && <span className="sidebar-thread-dot" aria-hidden="true" />}
       <span className="sidebar-study-name">{thread.title}</span>
     </button>
   );
 
   const threadsByStatus = {
-    waiting_on_user: threads.filter((t) => t.status === "waiting_on_user"),
-    waiting_on_agent: threads.filter((t) => t.status === "waiting_on_agent"),
+    open: threads.filter((t) => t.status !== "closed"),
     closed: threads.filter((t) => t.status === "closed"),
   };
 
@@ -207,8 +205,7 @@ export function Sidebar({
 
       <div className="sidebar-sections">
         {([
-          ["waiting_on_user", "Threads Waiting On You"],
-          ["waiting_on_agent", "Threads Waiting On Agent"],
+          ["open", "Threads"],
           ["closed", "Closed Threads"],
         ] as const).map(([status, label]) => {
           const items = threadsByStatus[status];
