@@ -29,6 +29,7 @@ class SkillInstallationTests(unittest.TestCase):
                 "connective-research.md",
                 "follow-up-research.md",
                 "initial-exploration.md",
+                "thread-responder.md",
             ],
         )
 

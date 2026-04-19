@@ -13,11 +13,13 @@ from seminar.service import validate_slug
 from seminar.service.ideas import IdeaService
 from seminar.service.initial_expectations import InitialExpectationService
 from seminar.service.studies import StudyService
+from seminar.service.threads import ThreadService
 from seminar.server.dependencies import (
     get_hub,
     get_idea_service,
     get_initial_expectation_service,
     get_study_service,
+    get_thread_service,
 )
 
 router = APIRouter(prefix="/api")
@@ -63,6 +65,11 @@ def get_idea_sources(slug: str, ideas: IdeaService = Depends(get_idea_service)):
 @router.get("/ideas/{slug}/children")
 def get_idea_children(slug: str, ideas: IdeaService = Depends(get_idea_service)):
     return ideas.children(slug)
+
+
+@router.get("/ideas/{slug}/threads")
+def get_idea_threads(slug: str, threads: ThreadService = Depends(get_thread_service)):
+    return [asdict(thread) for thread in threads.list_for_idea(slug)]
 
 
 @router.get("/ideas/{slug}/export")
@@ -114,6 +121,11 @@ def create_idea(
 
 class DirectorNoteRequest(BaseModel):
     body: str
+    thread_id: int | None = None
+
+
+class ThreadActionRequest(BaseModel):
+    thread_id: int | None = None
 
 
 @router.post("/ideas/{slug}/director-note")
@@ -122,11 +134,28 @@ def add_director_note(
     req: DirectorNoteRequest,
     ideas: IdeaService = Depends(get_idea_service),
     studies: StudyService = Depends(get_study_service),
+    threads: ThreadService = Depends(get_thread_service),
     hub: BroadcastHub = Depends(get_hub),
 ):
     study_number = studies.add_director_note(slug, req.body)
     hub.publish_event("idea_upserted", asdict(ideas.status_summary(slug)))
     hub.publish_event("study_count_updated", {"slug": slug, "count": studies.count_for_idea(slug)})
+    if req.thread_id is not None:
+        message_id = threads.add_system_event(
+            req.thread_id,
+            body=f"Director note added to {slug}.",
+            event_type="director_note_added",
+            related_idea_slug=slug,
+            related_study_number=study_number,
+        )
+        summary = threads.get(req.thread_id)
+        detail = threads.get_detail(req.thread_id)
+        if summary is not None:
+            hub.publish_event("thread_upserted", asdict(summary))
+        if detail is not None:
+            message = next((m for m in detail.messages if m.id == message_id), None)
+            if message is not None:
+                hub.publish_event("thread_message_added", asdict(message))
     hub.emit(f"Director's note added to {slug}", slug=slug)
     return {"ok": True, "study_number": study_number}
 
@@ -134,11 +163,28 @@ def add_director_note(
 @router.post("/ideas/{slug}/done")
 def mark_idea_done(
     slug: str,
+    req: ThreadActionRequest | None = None,
     ideas: IdeaService = Depends(get_idea_service),
+    threads: ThreadService = Depends(get_thread_service),
     hub: BroadcastHub = Depends(get_hub),
 ):
     ideas.mark_done(slug)
     hub.publish_event("idea_upserted", asdict(ideas.status_summary(slug)))
+    if req is not None and req.thread_id is not None:
+        message_id = threads.add_system_event(
+            req.thread_id,
+            body=f"Idea {slug} marked done.",
+            event_type="idea_done",
+            related_idea_slug=slug,
+        )
+        summary = threads.get(req.thread_id)
+        detail = threads.get_detail(req.thread_id)
+        if summary is not None:
+            hub.publish_event("thread_upserted", asdict(summary))
+        if detail is not None:
+            message = next((m for m in detail.messages if m.id == message_id), None)
+            if message is not None:
+                hub.publish_event("thread_message_added", asdict(message))
     hub.emit(f"Marked {slug} as done", slug=slug)
     return {"ok": True}
 
@@ -146,11 +192,28 @@ def mark_idea_done(
 @router.post("/ideas/{slug}/reopen")
 def reopen_idea(
     slug: str,
+    req: ThreadActionRequest | None = None,
     ideas: IdeaService = Depends(get_idea_service),
+    threads: ThreadService = Depends(get_thread_service),
     hub: BroadcastHub = Depends(get_hub),
 ):
     ideas.reopen(slug)
     hub.publish_event("idea_upserted", asdict(ideas.status_summary(slug)))
+    if req is not None and req.thread_id is not None:
+        message_id = threads.add_system_event(
+            req.thread_id,
+            body=f"Idea {slug} reopened for follow-up research.",
+            event_type="idea_reopened",
+            related_idea_slug=slug,
+        )
+        summary = threads.get(req.thread_id)
+        detail = threads.get_detail(req.thread_id)
+        if summary is not None:
+            hub.publish_event("thread_upserted", asdict(summary))
+        if detail is not None:
+            message = next((m for m in detail.messages if m.id == message_id), None)
+            if message is not None:
+                hub.publish_event("thread_message_added", asdict(message))
     hub.emit(f"Reopened {slug} for follow-up research", slug=slug)
     return {"ok": True}
 

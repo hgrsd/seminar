@@ -42,6 +42,12 @@ def main(argv: list[str] | None = None) -> None:
     # done
     done_p = sub.add_parser("done", help="Mark idea as done")
     done_p.add_argument("slug")
+    done_p.add_argument("--thread", type=int, default=None, help="Related thread id")
+
+    # reopen
+    reopen_p = sub.add_parser("reopen", help="Reopen idea for follow-up research")
+    reopen_p.add_argument("slug")
+    reopen_p.add_argument("--thread", type=int, default=None, help="Related thread id")
 
     # reset
     reset_p = sub.add_parser("reset", help="Reset idea to not_started")
@@ -66,6 +72,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Read the initial expectation for an idea, if one exists",
     )
     ideas_expectation_p.add_argument("slug")
+    ideas_note_p = ideas_sub.add_parser(
+        "director-note",
+        help="Add a director note to an idea (body via stdin)",
+    )
+    ideas_note_p.add_argument("slug")
+    ideas_note_p.add_argument("--thread", type=int, default=None, help="Related thread id")
     ideas_propose_p = ideas_sub.add_parser(
         "propose",
         help="Propose a new idea (body via stdin, goes to proposals queue)",
@@ -95,11 +107,18 @@ def main(argv: list[str] | None = None) -> None:
     studies_read_p.add_argument("slug")
     studies_read_p.add_argument("study_number", type=int)
 
-    # message (agent-facing)
-    message_p = sub.add_parser("message", help="Send a message to the director inbox")
-    message_p.add_argument("title", help="Message title")
-    message_p.add_argument("--idea", default=None, help="Idea slug this message relates to")
-    message_p.add_argument("--author", required=True, help="Author name")
+    # threads (agent-facing)
+    threads_p = sub.add_parser("threads", help="Thread conversation commands")
+    threads_sub = threads_p.add_subparsers(dest="threads_command")
+    threads_start_p = threads_sub.add_parser("start", help="Start a new thread (body via stdin)")
+    threads_start_p.add_argument("title", help="Thread title")
+    threads_start_p.add_argument("--author", required=True, help="Author name")
+    threads_start_p.add_argument("--idea", default=None, help="Related idea slug")
+    threads_reply_p = threads_sub.add_parser("reply", help="Reply to an existing thread (body via stdin)")
+    threads_reply_p.add_argument("thread_id", type=int)
+    threads_reply_p.add_argument("--author", required=True, help="Author name")
+    threads_close_p = threads_sub.add_parser("close", help="Close an existing thread")
+    threads_close_p.add_argument("thread_id", type=int)
 
     # pause / resume
     sub.add_parser("pause", help="Pause the worker fleet")
@@ -145,7 +164,8 @@ def main(argv: list[str] | None = None) -> None:
     dispatch = {
         "init": lambda: _cmd_init(getattr(args, "provider", None)),
         "status": lambda: _cmd_status(_svc(), args.slug),
-        "done": lambda: _cmd_done(args.slug),
+        "done": lambda: _cmd_done(args.slug, args.thread),
+        "reopen": lambda: _cmd_reopen(args.slug, args.thread),
         "reset": lambda: _cmd_reset(args.slug),
         "reset-all": _cmd_reset_all,
         "pause": _cmd_pause,
@@ -155,7 +175,7 @@ def main(argv: list[str] | None = None) -> None:
         "proposals": lambda: _cmd_proposals(_svc(), args),
         "studies": lambda: _cmd_studies(_svc(), args),
         "uninstall": _cmd_uninstall,
-        "message": lambda: _cmd_send_message(args.title, args.idea, args.author),
+        "threads": lambda: _cmd_threads(args),
         "claim-new": _cmd_claim_new,
         "claim-further": _cmd_claim_further,
         "complete-study": lambda: _cmd_complete_study(
@@ -274,17 +294,45 @@ def _cmd_propose_idea(
     print(canonical)
 
 
-def _cmd_send_message(title: str, idea_slug: str | None, author: str) -> None:
+def _cmd_start_thread(title: str, author: str, idea_slug: str | None = None) -> None:
     body = sys.stdin.read()
     if not body.strip():
-        print("Error: message body must be provided via stdin.", file=sys.stderr)
+        print("Error: thread body must be provided via stdin.", file=sys.stderr)
         sys.exit(1)
     result = _api_request(
         "POST",
-        "/api/messages",
-        {"title": title, "body": body, "idea_slug": idea_slug, "author": author},
+        "/api/threads/agent",
+        {"title": title, "body": body, "author_name": author, "idea_slug": idea_slug},
     )
     print(result.get("id", ""))
+
+
+def _cmd_reply_thread(thread_id: int, author: str) -> None:
+    body = sys.stdin.read()
+    if not body.strip():
+        print("Error: thread body must be provided via stdin.", file=sys.stderr)
+        sys.exit(1)
+    _api_request(
+        "POST",
+        f"/api/threads/{thread_id}/agent-reply",
+        {"body": body, "author_name": author},
+    )
+
+
+def _cmd_close_thread(thread_id: int) -> None:
+    _api_request("POST", f"/api/threads/{thread_id}/close")
+
+
+def _cmd_threads(args) -> None:
+    if args.threads_command == "start":
+        _cmd_start_thread(args.title, args.author, args.idea)
+    elif args.threads_command == "reply":
+        _cmd_reply_thread(args.thread_id, args.author)
+    elif args.threads_command == "close":
+        _cmd_close_thread(args.thread_id)
+    else:
+        print("Usage: seminar threads {start|reply|close}", file=sys.stderr)
+        sys.exit(1)
 
 
 def _cmd_proposals(svc: SimpleNamespace, args) -> None:
@@ -316,10 +364,20 @@ def _cmd_ideas(svc: SimpleNamespace, args) -> None:
         if expectation is None:
             sys.exit(0)
         print(expectation.body)
+    elif args.ideas_command == "director-note":
+        body = sys.stdin.read()
+        if not body.strip():
+            print("Error: director note body must be provided via stdin.", file=sys.stderr)
+            sys.exit(1)
+        _api_request(
+            "POST",
+            f"/api/ideas/{args.slug}/director-note",
+            {"body": body, "thread_id": args.thread},
+        )
     elif args.ideas_command == "propose":
         _cmd_propose_idea(args.slug, args.parent_slugs, args.title, args.author)
     else:
-        print("Usage: seminar ideas {list|read|initial-expectation|propose}", file=sys.stderr)
+        print("Usage: seminar ideas {list|read|initial-expectation|director-note|propose}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -429,8 +487,14 @@ def _cmd_resume() -> None:
     print("Fleet resumed.")
 
 
-def _cmd_done(slug: str) -> None:
-    _api_request("POST", f"/api/ideas/{slug}/done")
+def _cmd_done(slug: str, thread_id: int | None = None) -> None:
+    payload = {"thread_id": thread_id} if thread_id is not None else None
+    _api_request("POST", f"/api/ideas/{slug}/done", payload)
+
+
+def _cmd_reopen(slug: str, thread_id: int | None = None) -> None:
+    payload = {"thread_id": thread_id} if thread_id is not None else None
+    _api_request("POST", f"/api/ideas/{slug}/reopen", payload)
 
 
 def _cmd_claim_new() -> None:
@@ -506,6 +570,7 @@ def _install_default_skills(cfg: Config) -> None:
         "initial-exploration.md",
         "follow-up-research.md",
         "connective-research.md",
+        "thread-responder.md",
     ):
         destination = cfg.skills_dir / filename
         destination.write_text(skills.joinpath(filename).read_text())

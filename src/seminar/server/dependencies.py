@@ -7,11 +7,12 @@ from seminar.server.broadcast import BroadcastHub
 from seminar.service.annotations import AnnotationService
 from seminar.service.ideas import IdeaService
 from seminar.service.initial_expectations import InitialExpectationService
-from seminar.service.messages import MessageService
 from seminar.service.proposals import ProposalService
 from seminar.service.runs import RunService
 from seminar.service.search import SearchService
 from seminar.service.studies import StudyService
+from seminar.service.threads import ThreadService
+from seminar.server.thread_responder import ThreadResponderRunner
 from seminar.workers import WorkerPool
 
 
@@ -35,8 +36,8 @@ def get_study_service(request: Request) -> StudyService:
     return request.app.state.study_service
 
 
-def get_message_service(request: Request) -> MessageService:
-    return request.app.state.message_service
+def get_thread_service(request: Request) -> ThreadService:
+    return request.app.state.thread_service
 
 
 def get_proposal_service(request: Request) -> ProposalService:
@@ -49,6 +50,14 @@ def get_search_service(request: Request) -> SearchService:
 
 def get_run_service(request: Request) -> RunService:
     return request.app.state.run_service
+
+
+def get_request(request: Request) -> Request:
+    return request
+
+
+def get_thread_runner(request: Request) -> ThreadResponderRunner:
+    return request.app.state.thread_runner
 
 
 def get_pool(request: Request) -> WorkerPool:

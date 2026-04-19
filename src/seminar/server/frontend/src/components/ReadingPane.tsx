@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useMemo, useCallback, isValidElement, type ReactNode, type ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { Idea, StudyFile, Worker, Proposal, Message, NavigationTarget, InitialExpectation } from "../types";
+import type { Idea, StudyFile, Worker, Proposal, ThreadDetail, ThreadSummary, NavigationTarget, InitialExpectation } from "../types";
 import { useIdeas } from "../hooks/useIdeas";
 import { useProposals } from "../hooks/useProposals";
-import { useMessages } from "../hooks/useMessages";
+import { useThreads } from "../hooks/useThreads";
 import { useStudyAnnotations } from "../hooks/useStudyAnnotations";
 import { relativeTime, workerTypeLabel, studyModeLabel, WORKER_TYPE_COLORS } from "../utils";
 import { StudyCard } from "./StudyCard";
@@ -128,7 +128,7 @@ function TableOfContents({ entries, scrollRef }: { entries: TocEntry[]; scrollRe
 interface Props {
   idea: Idea | null;
   selectedProposal: Proposal | null;
-  selectedMessage: Message | null;
+  selectedThread: ThreadSummary | null;
   activeWorkers: Map<string, Worker>;
   onWorkerClick: (workerId: number) => void;
   selectedStudy: number | null;
@@ -137,6 +137,7 @@ interface Props {
   studiesCache: Record<string, StudyFile[]>;
   fetchStudies: (slug: string) => void;
   onNavigate: (target: NavigationTarget) => void;
+  onStartThread: (ideaSlug: string | null, initialTitle: string) => void;
   onClose: () => void;
 }
 
@@ -155,16 +156,15 @@ const STATE_CLASSES: Record<string, string> = {
   done: "state-badge--done",
 };
 
-export function ReadingPane({ idea, selectedProposal, selectedMessage, activeWorkers, onWorkerClick, selectedStudy, scrollToAnnotationId, onScrollToAnnotationHandled, studiesCache, fetchStudies, onNavigate, onClose }: Props) {
+export function ReadingPane({ idea, selectedProposal, selectedThread, activeWorkers, onWorkerClick, selectedStudy, scrollToAnnotationId, onScrollToAnnotationHandled, studiesCache, fetchStudies, onNavigate, onStartThread, onClose }: Props) {
   const {
     markIdeaDone,
     reopenIdea,
     resetIdea,
     deleteIdea,
-    addDirectorNote,
   } = useIdeas();
   const { approveProposal, rejectProposal, deleteProposal } = useProposals();
-  const { getMessageContent, markMessageRead, deleteMessage } = useMessages();
+  const { threads, getThread, replyToThread, closeThread, deleteThread } = useThreads();
   const [content, setContent] = useState<string | null>(null);
   const [title, setTitle] = useState<string | null>(null);
   const [meta, setMeta] = useState<Record<string, string> | null>(null);
@@ -173,17 +173,18 @@ export function ReadingPane({ idea, selectedProposal, selectedMessage, activeWor
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmReject, setConfirmReject] = useState(false);
   const [confirmDeleteProposal, setConfirmDeleteProposal] = useState(false);
-  const [confirmDeleteMessage, setConfirmDeleteMessage] = useState(false);
-  const [messageContent, setMessageContent] = useState<string | null>(null);
-  const [messageLoading, setMessageLoading] = useState(false);
+  const [confirmDeleteThread, setConfirmDeleteThread] = useState(false);
+  const [threadDetail, setThreadDetail] = useState<ThreadDetail | null>(null);
+  const [threadLoading, setThreadLoading] = useState(false);
+  const [threadReply, setThreadReply] = useState("");
+  const [threadAuthorName, setThreadAuthorName] = useState("");
+  const [threadSubmitting, setThreadSubmitting] = useState(false);
   const [proposalContent, setProposalContent] = useState<string | null>(null);
   const [proposalMeta, setProposalMeta] = useState<Record<string, string> | null>(null);
   const [proposalLoading, setProposalLoading] = useState(false);
   const [sources, setSources] = useState<{ slug: string; title: string }[]>([]);
   const [children, setChildren] = useState<{ slug: string; title: string }[]>([]);
   const [initialExpectation, setInitialExpectation] = useState<InitialExpectation | null>(null);
-  const [noteText, setNoteText] = useState("");
-  const [noteSubmitting, setNoteSubmitting] = useState(false);
   const [exporting, setExporting] = useState(false);
   const deleteBtnRef = useRef<HTMLButtonElement>(null);
   const deleteProposalBtnRef = useRef<HTMLButtonElement>(null);
@@ -273,22 +274,22 @@ export function ReadingPane({ idea, selectedProposal, selectedMessage, activeWor
   }, [selectedProposal?.slug]);
 
   useEffect(() => {
-    if (!selectedMessage) {
-      setMessageContent(null);
+    if (!selectedThread) {
+      setThreadDetail(null);
       return;
     }
-    setMessageLoading(true);
-    setMessageContent(null);
-    setConfirmDeleteMessage(false);
+    setThreadLoading(true);
+    setThreadDetail(null);
+    setConfirmDeleteThread(false);
     const controller = new AbortController();
-    getMessageContent(selectedMessage.id, controller.signal)
+    getThread(selectedThread.id, controller.signal)
       .then((data) => {
-        setMessageContent(data.content ?? null);
-        setMessageLoading(false);
+        setThreadDetail(data);
+        setThreadLoading(false);
       })
-      .catch(() => setMessageLoading(false));
+      .catch(() => setThreadLoading(false));
     return () => controller.abort();
-  }, [selectedMessage?.id]);
+  }, [getThread, selectedThread?.id, selectedThread?.updated_at]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, 0);
@@ -306,6 +307,10 @@ export function ReadingPane({ idea, selectedProposal, selectedMessage, activeWor
   );
 
   const mdComponents = useMemo(() => makeHeadingComponents(scrollRef), [scrollRef]);
+  const ideaThreads = useMemo(
+    () => (idea ? threads.filter((thread) => thread.idea_slug === idea.slug) : []),
+    [idea, threads],
+  );
   const {
     annotationLoading,
     annotationBody,
@@ -330,18 +335,31 @@ export function ReadingPane({ idea, selectedProposal, selectedMessage, activeWor
     onScrollToAnnotationHandled,
   );
 
-  if (selectedMessage) {
-    const handleMarkRead = () => {
-      void markMessageRead(selectedMessage.id);
-    };
-    const handleDeleteMessage = () => {
-      if (!confirmDeleteMessage) {
-        setConfirmDeleteMessage(true);
+  if (selectedThread) {
+    const handleDeleteThread = () => {
+      if (!confirmDeleteThread) {
+        setConfirmDeleteThread(true);
         return;
       }
-      void deleteMessage(selectedMessage.id);
-      setConfirmDeleteMessage(false);
+      void deleteThread(selectedThread.id);
+      setConfirmDeleteThread(false);
       onClose();
+    };
+    const handleReply = async () => {
+      if (!threadReply.trim() || !threadAuthorName.trim()) return;
+      setThreadSubmitting(true);
+      try {
+        await replyToThread(selectedThread.id, {
+          body: threadReply,
+          author_name: threadAuthorName.trim(),
+        });
+        setThreadReply("");
+      } finally {
+        setThreadSubmitting(false);
+      }
+    };
+    const handleCloseThread = () => {
+      void closeThread(selectedThread.id);
     };
 
     return (
@@ -350,46 +368,96 @@ export function ReadingPane({ idea, selectedProposal, selectedMessage, activeWor
           <button className="icon-btn reading-pane-close" onClick={onClose} title="Close">&times;</button>
           <article className="reading-pane-content">
             <header className="reading-pane-header">
-              <h1 className="reading-pane-title">{selectedMessage.title}</h1>
+              <h1 className="reading-pane-title">{selectedThread.title}</h1>
               <div className="reading-pane-meta">
                 <span className="reading-pane-byline">
-                  {selectedMessage.author}
-                  {selectedMessage.recorded_at && <> · {relativeTime(selectedMessage.recorded_at)}</>}
+                  {selectedThread.status.replace(/_/g, " ")}
+                  {selectedThread.updated_at && <> · {relativeTime(selectedThread.updated_at)}</>}
                 </span>
               </div>
             </header>
 
-            {selectedMessage.idea_slug && (
+            {selectedThread.idea_slug && (
               <div className="pedigree">
                 <div className="pedigree-group">
-                  <span className="pedigree-label">About</span>
-                  <button className="pedigree-link" onClick={() => onNavigate({ type: "idea", slug: selectedMessage.idea_slug! })}>
-                    {selectedMessage.idea_slug}
+                  <span className="pedigree-label">Idea</span>
+                  <button className="pedigree-link" onClick={() => onNavigate({ type: "idea", slug: selectedThread.idea_slug! })}>
+                    {selectedThread.idea_slug}
                   </button>
                 </div>
               </div>
             )}
 
-            {messageLoading && <div className="reading-pane-loading">Loading...</div>}
+            {threadLoading && <div className="reading-pane-loading">Loading...</div>}
 
-            {!messageLoading && messageContent && (
-              <div className="prose">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{messageContent}</ReactMarkdown>
+            {!threadLoading && threadDetail && (
+              <div className="thread-timeline">
+                {threadDetail.messages.map((message) => (
+                  <div key={message.id} className={`thread-message thread-message--${message.author_type}`}>
+                    <div className="thread-message-meta">
+                      <span className="thread-message-author">{message.author_name}</span>
+                      <span className="thread-message-ts">{relativeTime(message.created_at)}</span>
+                    </div>
+                    {message.event_type && (
+                      <div className="thread-event-links">
+                        {message.related_idea_slug && message.related_study_number != null ? (
+                          <button
+                            className="pedigree-link"
+                            onClick={() => onNavigate({ type: "study", slug: message.related_idea_slug!, study_number: message.related_study_number! })}
+                          >
+                            Open resulting study
+                          </button>
+                        ) : message.related_idea_slug ? (
+                          <button
+                            className="pedigree-link"
+                            onClick={() => onNavigate({ type: "idea", slug: message.related_idea_slug! })}
+                          >
+                            Open related idea
+                          </button>
+                        ) : null}
+                      </div>
+                    )}
+                    <div className="prose">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.body}</ReactMarkdown>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
-            {!messageLoading && (
+            {!threadLoading && (
               <footer className="reading-pane-actions">
                 <div className="action-buttons">
-                  {selectedMessage.status === "unread" && (
-                    <button className="action-btn btn--primary" onClick={handleMarkRead}>
-                      Mark Read
-                    </button>
+                  {selectedThread.status !== "closed" && (
+                    <button className="action-btn" onClick={handleCloseThread}>Close Thread</button>
                   )}
-                  <button className="action-btn" onClick={handleDeleteMessage}>
-                    {confirmDeleteMessage ? "Confirm Delete" : "Delete"}
+                  <button className="action-btn" onClick={handleDeleteThread}>
+                    {confirmDeleteThread ? "Confirm Delete" : "Delete"}
                   </button>
                 </div>
+                {selectedThread.status !== "closed" && (
+                  <div className="thread-composer">
+                    <input
+                      className="modal-input"
+                      type="text"
+                      placeholder="Your name"
+                      value={threadAuthorName}
+                      onChange={(e) => setThreadAuthorName(e.target.value)}
+                    />
+                    <textarea
+                      className="modal-textarea"
+                      rows={6}
+                      placeholder="Reply"
+                      value={threadReply}
+                      onChange={(e) => setThreadReply(e.target.value)}
+                    />
+                    <div className="action-buttons">
+                      <button className="action-btn btn--primary" onClick={handleReply} disabled={threadSubmitting}>
+                        {threadSubmitting ? "Sending..." : "Send Reply"}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </footer>
             )}
           </article>
@@ -816,29 +884,27 @@ export function ReadingPane({ idea, selectedProposal, selectedMessage, activeWor
           {!loading && (
             <section className="director-note-section">
               <div className="studies-divider">
-                <span>Add director's note</span>
+                <span>Threads ({ideaThreads.length})</span>
               </div>
-              <textarea
-                className="director-note-input"
-                placeholder="Ask a follow-up question, challenge a finding, or redirect the research..."
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                rows={3}
-              />
+              <div className="idea-thread-list">
+                {ideaThreads.map((thread) => (
+                  <button
+                    key={thread.id}
+                    className="sidebar-study-item"
+                    onClick={() => onNavigate({ type: "thread", id: thread.id })}
+                  >
+                    <span className="sidebar-study-name">{thread.title}</span>
+                  </button>
+                ))}
+                {ideaThreads.length === 0 && (
+                  <div className="activity-empty">No threads for this idea yet</div>
+                )}
+              </div>
               <button
                 className="action-btn btn--primary director-note-submit"
-                disabled={!noteText.trim() || noteSubmitting}
-                onClick={() => {
-                  setNoteSubmitting(true);
-                  addDirectorNote(idea.slug, noteText.trim())
-                    .then(() => {
-                      setNoteText("");
-                      fetchStudies(idea.slug);
-                    })
-                    .finally(() => setNoteSubmitting(false));
-                }}
+                onClick={() => onStartThread(idea.slug, `About ${idea.title}`)}
               >
-                {noteSubmitting ? "Submitting..." : "Submit"}
+                Start Thread About This Idea
               </button>
             </section>
           )}

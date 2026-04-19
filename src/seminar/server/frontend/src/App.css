@@ -2059,6 +2059,56 @@ textarea {
   margin-top: 20px;
 }
 
+.thread-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.thread-message {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.thread-message--user {
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+}
+
+.thread-message-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.thread-message-author {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.thread-event-links {
+  margin-bottom: 10px;
+}
+
+.thread-composer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.idea-thread-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
 .settings-card {
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);

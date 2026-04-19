@@ -132,24 +132,49 @@ class ProposalContent:
     meta: IdeaMeta
 
 
-# --- Messages ---
+# --- Threads ---
 
 
 @dataclass
-class MessageSummary:
+class ThreadSummary:
     id: int
-    recorded_at: str
     title: str
-    author: str
     status: str
     idea_slug: str | None
-    description: str
+    assigned_responder: str | None
+    assigned_run_id: int | None
+    created_at: str
+    updated_at: str
+    preview: str
+    message_count: int
+    last_author_type: str | None
+    last_author_name: str | None
 
 
 @dataclass
-class MessageContent:
-    content: str
-    meta: IdeaMeta
+class ThreadMessage:
+    id: int
+    thread_id: int
+    author_type: str
+    author_name: str
+    body: str
+    created_at: str
+    event_type: str | None = None
+    related_idea_slug: str | None = None
+    related_study_number: int | None = None
+
+
+@dataclass
+class ThreadDetail:
+    id: int
+    title: str
+    status: str
+    idea_slug: str | None
+    assigned_responder: str | None
+    assigned_run_id: int | None
+    created_at: str
+    updated_at: str
+    messages: list[ThreadMessage]
 
 
 # --- Runs ---
@@ -192,4 +217,4 @@ class SearchHit:
     snippet: str
     study_number: int | None = None
     annotation_id: int | None = None
-    message_id: int | None = None
+    thread_id: int | None = None

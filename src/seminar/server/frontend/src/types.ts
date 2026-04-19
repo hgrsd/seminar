@@ -35,14 +35,40 @@ export interface Proposal {
   description: string;
 }
 
-export interface Message {
+export interface ThreadSummary {
   id: number;
-  recorded_at: string;
   title: string;
-  author: string;
-  status: "unread" | "read";
+  status: "waiting_on_user" | "waiting_on_agent" | "closed";
   idea_slug: string | null;
-  description: string;
+  assigned_responder: string | null;
+  assigned_run_id: number | null;
+  created_at: string;
+  updated_at: string;
+  preview: string;
+  message_count: number;
+  last_author_type: "user" | "agent" | "system" | null;
+  last_author_name: string | null;
+}
+
+export interface ThreadMessage {
+  id: number;
+  thread_id: number;
+  author_type: "user" | "agent" | "system";
+  author_name: string;
+  body: string;
+  created_at: string;
+  event_type: string | null;
+  related_idea_slug: string | null;
+  related_study_number: number | null;
+}
+
+export interface ThreadDetail extends ThreadSummary {
+  messages: ThreadMessage[];
+}
+
+export interface Responder {
+  id: string;
+  label: string;
 }
 
 export interface StudyFile {
@@ -112,6 +138,7 @@ export interface ActivityEvent {
   ts: string;
   message: string;
   slug?: string;
+  thread_id?: number;
   worker_id?: number;
   study_filename?: string;
   proposal_slug?: string;
@@ -121,7 +148,7 @@ export type NavigationTarget =
   | { type: "idea"; slug: string }
   | { type: "study"; slug: string; study_number: number }
   | { type: "proposal"; slug: string }
-  | { type: "message"; id: number }
+  | { type: "thread"; id: number }
   | { type: "annotation"; slug: string; study_number: number; annotation_id: number };
 
 export interface SnapshotState {
@@ -130,9 +157,10 @@ export interface SnapshotState {
   activity: ActivityEvent[];
   study_counts: Record<string, number>;
   proposals: Proposal[];
-  messages: Message[];
+  threads: ThreadSummary[];
   paused: boolean;
   session_cost: number;
+  responders: Responder[];
 }
 
 export interface TimingSettings {
@@ -171,5 +199,6 @@ export type WSMessage =
   | { type: "study_counts_replaced"; data: Record<string, number> }
   | { type: "paused_changed"; data: boolean }
   | { type: "session_cost_changed"; data: number }
-  | { type: "message_upserted"; data: Message }
-  | { type: "message_deleted"; data: { id: number } };
+  | { type: "thread_upserted"; data: ThreadSummary }
+  | { type: "thread_deleted"; data: { id: number } }
+  | { type: "thread_message_added"; data: ThreadMessage };

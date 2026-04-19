@@ -10,6 +10,9 @@ interface Props {
 }
 
 function navTarget(event: ActivityEvent): NavigationTarget | null {
+  if (event.thread_id != null) {
+    return { type: "thread", id: event.thread_id };
+  }
   if (event.proposal_slug) {
     return { type: "proposal", slug: event.proposal_slug };
   }

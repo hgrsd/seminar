@@ -2,13 +2,13 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import type { NavigationTarget } from "../types";
 
 interface SearchResult {
-  type: "idea" | "study" | "proposal" | "annotation" | "message";
+  type: "idea" | "study" | "proposal" | "annotation" | "thread";
   slug: string | null;
   title: string;
   snippet: string;
   study_number?: number;
   annotation_id?: number;
-  message_id?: number;
+  thread_id?: number;
 }
 
 interface Props {
@@ -22,7 +22,7 @@ const TYPE_LABELS: Record<string, string> = {
   study: "Study",
   proposal: "Proposal",
   annotation: "Annotation",
-  message: "Message",
+  thread: "Thread",
 };
 
 
@@ -99,8 +99,8 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
       onNavigate({ type: "proposal", slug: result.slug });
     } else if (result.type === "annotation" && result.slug != null && result.study_number != null && result.annotation_id != null) {
       onNavigate({ type: "annotation", slug: result.slug, study_number: result.study_number, annotation_id: result.annotation_id });
-    } else if (result.type === "message" && result.message_id != null) {
-      onNavigate({ type: "message", id: result.message_id });
+    } else if (result.type === "thread" && result.thread_id != null) {
+      onNavigate({ type: "thread", id: result.thread_id });
     }
   };
 
@@ -113,7 +113,7 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
           ref={inputRef}
           className="search-modal-input"
           type="text"
-          placeholder="Search ideas, studies, proposals, messages..."
+          placeholder="Search ideas, studies, proposals, threads..."
           value={query}
           onChange={(e) => handleChange(e.target.value)}
         />
@@ -126,7 +126,7 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
           )}
           {results.map((r, i) => (
             <button
-              key={`${r.type}-${r.message_id ?? r.slug ?? "none"}-${r.study_number ?? ""}-${i}`}
+              key={`${r.type}-${r.thread_id ?? r.slug ?? "none"}-${r.study_number ?? ""}-${i}`}
               className="search-result"
               onClick={() => handleSelect(r)}
             >

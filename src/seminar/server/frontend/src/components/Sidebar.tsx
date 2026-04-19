@@ -1,16 +1,16 @@
-import { useState, useMemo, useCallback, useEffect } from "react";
-import type { Idea, Worker, StudyFile, Proposal, Message, NavigationTarget } from "../types";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { Idea, Worker, StudyFile, Proposal, ThreadSummary, NavigationTarget } from "../types";
 import { stateGroup, WORKER_TYPE_COLORS } from "../utils";
 
 interface Props {
   ideas: Idea[];
   proposals: Proposal[];
-  messages: Message[];
+  threads: ThreadSummary[];
   activeWorkers: Map<string, Worker>;
   selectedSlug: string | null;
   selectedStudy: number | null;
   selectedProposal: string | null;
-  selectedMessage: number | null;
+  selectedThread: number | null;
   studyCounts: Record<string, number>;
   studiesCache: Record<string, StudyFile[]>;
   fetchStudies: (slug: string) => void;
@@ -29,7 +29,16 @@ const SECTIONS: SectionConfig[] = [
   { key: "done", label: "Well-understood" },
 ];
 
-const ALL_SECTION_KEYS = ["inbox", "inbox_unread", "inbox_read", "rejected_proposals", "not_started", "active", "done"];
+const ALL_SECTION_KEYS = [
+  "threads_waiting_on_user",
+  "threads_waiting_on_agent",
+  "threads_closed",
+  "proposals_pending",
+  "rejected_proposals",
+  "not_started",
+  "active",
+  "done",
+];
 
 type SortField = "name" | "created" | "activity";
 type SortDir = "asc" | "desc";
@@ -56,11 +65,26 @@ function sortIdeas(ideas: Idea[], sort: SortState, activeSlugs: Set<string>): Id
   return [...ideas].sort((a, b) => flip * compareIdeas(a, b, sort.field, activeSlugs));
 }
 
-export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlug, selectedStudy, selectedProposal, selectedMessage, studyCounts, studiesCache, fetchStudies, onNavigate, onCollapse }: Props) {
+export function Sidebar({
+  ideas,
+  proposals,
+  threads,
+  activeWorkers,
+  selectedSlug,
+  selectedStudy,
+  selectedProposal,
+  selectedThread,
+  studyCounts,
+  studiesCache,
+  fetchStudies,
+  onNavigate,
+  onCollapse,
+}: Props) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
-    inbox: true,
-    inbox_unread: false,
-    inbox_read: true,
+    threads_waiting_on_user: false,
+    threads_waiting_on_agent: false,
+    threads_closed: true,
+    proposals_pending: false,
     rejected_proposals: true,
     not_started: true,
     active: true,
@@ -93,10 +117,8 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
     if (!selectedSlug || !selectedStudy) return;
     if (expandedIdeas[selectedSlug]) return;
     setExpandedIdeas((prev) => ({ ...prev, [selectedSlug]: true }));
-    if (!studiesCache[selectedSlug]) {
-      fetchStudies(selectedSlug);
-    }
-  }, [selectedSlug, selectedStudy]);
+    if (!studiesCache[selectedSlug]) fetchStudies(selectedSlug);
+  }, [expandedIdeas, fetchStudies, selectedSlug, selectedStudy, studiesCache]);
 
   useEffect(() => {
     if (selectedProposal) {
@@ -104,24 +126,18 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
       if (!selected) return;
       setCollapsed((prev) => selected.status === "rejected"
         ? { ...prev, rejected_proposals: false }
-        : { ...prev, inbox: false, inbox_unread: false });
+        : { ...prev, proposals_pending: false });
       return;
     }
-    if (!selectedMessage) return;
-    const selected = messages.find((message) => message.id === selectedMessage);
+    if (!selectedThread) return;
+    const selected = threads.find((thread) => thread.id === selectedThread);
     if (!selected) return;
-    setCollapsed((prev) => ({
-      ...prev,
-      inbox: false,
-      [selected.status === "read" ? "inbox_read" : "inbox_unread"]: false,
-    }));
-  }, [messages, proposals, selectedMessage, selectedProposal]);
+    setCollapsed((prev) => ({ ...prev, [`threads_${selected.status}`]: false }));
+  }, [proposals, selectedProposal, selectedThread, threads]);
 
   const toggleAllSections = (expand: boolean) => {
     setCollapsed(Object.fromEntries(ALL_SECTION_KEYS.map((k) => [k, !expand])));
-    if (!expand) {
-      setExpandedIdeas({});
-    }
+    if (!expand) setExpandedIdeas({});
   };
 
   const toggleSection = (key: string) =>
@@ -130,9 +146,7 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
   const toggleIdeaStudies = useCallback((slug: string) => {
     const isExpanded = expandedIdeas[slug] ?? false;
     setExpandedIdeas((prev) => ({ ...prev, [slug]: !isExpanded }));
-    if (!isExpanded) {
-      fetchStudies(slug);
-    }
+    if (!isExpanded) fetchStudies(slug);
   }, [expandedIdeas, fetchStudies]);
 
   const handleIdeaClick = useCallback((slug: string) => {
@@ -140,12 +154,29 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
     toggleIdeaStudies(slug);
   }, [onNavigate, toggleIdeaStudies]);
 
+  const renderThreadButton = (thread: ThreadSummary) => (
+    <button
+      key={`thread-${thread.id}`}
+      id={`sidebar-thread-${thread.id}`}
+      className={`sidebar-study-item ${thread.id === selectedThread ? "sidebar-study-item--selected" : ""}`}
+      onClick={() => onNavigate({ type: "thread", id: thread.id })}
+    >
+      <span className="sidebar-study-name">{thread.title}</span>
+    </button>
+  );
+
+  const threadsByStatus = {
+    waiting_on_user: threads.filter((t) => t.status === "waiting_on_user"),
+    waiting_on_agent: threads.filter((t) => t.status === "waiting_on_agent"),
+    closed: threads.filter((t) => t.status === "closed"),
+  };
+
   return (
     <aside className="sidebar">
       <div className="sidebar-sort-bar">
         {([["name", "A-Z"], ["created", "New"], ["activity", "Active"]] as const).map(([field, label]) => {
           const active = sort?.field === field;
-          const arrow = active ? (sort.dir === "asc" ? " \u2193" : " \u2191") : "";
+          const arrow = active ? (sort.dir === "asc" ? " ↓" : " ↑") : "";
           return (
             <button
               key={field}
@@ -175,112 +206,14 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
       </div>
 
       <div className="sidebar-sections">
-        {/* Inbox: pending proposals + messages */}
-        {(() => {
-          const pendingProposals = proposals.filter((p) => p.status === "pending");
-          const unreadMessages = messages.filter((m) => m.status === "unread");
-          const readMessages = messages.filter((m) => m.status === "read");
-          const unreadCount = pendingProposals.length + unreadMessages.length;
-          const readCount = readMessages.length;
-          const inboxHasItems = unreadCount + readCount > 0;
-          const isCollapsed = collapsed.inbox ?? false;
-          const isUnreadCollapsed = collapsed.inbox_unread ?? false;
-          const isReadCollapsed = collapsed.inbox_read ?? false;
-
-          type MessageInboxItem =
-            | { kind: "proposal"; recorded_at: string; proposal: Proposal }
-            | { kind: "message"; recorded_at: string; message: Message };
-
-          const unreadItems: MessageInboxItem[] = [
-            ...pendingProposals.map((p) => ({ kind: "proposal" as const, recorded_at: p.recorded_at, proposal: p })),
-            ...unreadMessages.map((m) => ({ kind: "message" as const, recorded_at: m.recorded_at, message: m })),
-          ].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
-          const readItems: MessageInboxItem[] = readMessages
-            .map((m) => ({ kind: "message" as const, recorded_at: m.recorded_at, message: m }))
-            .sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
-
-          const renderInboxItem = (item: MessageInboxItem) => item.kind === "proposal" ? (
-            <button
-              key={`proposal-${item.proposal.slug}`}
-              id={`sidebar-proposal-${item.proposal.slug}`}
-              className={`sidebar-study-item ${item.proposal.slug === selectedProposal ? "sidebar-study-item--selected" : ""}`}
-              onClick={() => onNavigate({ type: "proposal", slug: item.proposal.slug })}
-            >
-              <span className="sidebar-study-name">{item.proposal.title}</span>
-              <span className="state-badge">proposal</span>
-            </button>
-          ) : (
-            <button
-              key={`message-${item.message.id}`}
-              id={`sidebar-message-${item.message.id}`}
-              className={`sidebar-study-item ${item.message.id === selectedMessage ? "sidebar-study-item--selected" : ""}`}
-              onClick={() => onNavigate({ type: "message", id: item.message.id })}
-            >
-              <span className="sidebar-study-name">{item.message.title}</span>
-            </button>
-          );
-
-          return (
-            <div className="sidebar-section">
-              <button
-                className={`sidebar-section-header ${!inboxHasItems ? "sidebar-section-header--empty" : ""}`}
-                onClick={() => inboxHasItems && toggleSection("inbox")}
-              >
-                <span className="sidebar-section-arrow">
-                  {!inboxHasItems ? "" : isCollapsed ? "\u25B8" : "\u25BE"}
-                </span>
-                <span className="sidebar-section-label">Inbox</span>
-                <span className={`sidebar-section-count ${unreadCount > 0 ? "sidebar-section-count--inbox" : ""}`}>{unreadCount}</span>
-              </button>
-              {!isCollapsed && (
-                <div className="sidebar-section-items">
-                  <div className="sidebar-subsection">
-                    <button
-                      className={`sidebar-item sidebar-subsection-header ${unreadCount === 0 ? "sidebar-subsection-header--empty" : ""}`}
-                      onClick={() => unreadCount > 0 && toggleSection("inbox_unread")}
-                    >
-                      <span className="sidebar-item-dot" />
-                      <span className="sidebar-item-name">Unread</span>
-                      <span className="sidebar-item-count">({unreadCount})</span>
-                      <span className="sidebar-item-arrow sidebar-subsection-arrow">
-                        {unreadCount === 0 ? "" : isUnreadCollapsed ? "\u25B8" : "\u25BE"}
-                      </span>
-                    </button>
-                    {!isUnreadCollapsed && unreadItems.length > 0 && (
-                      <div className="sidebar-subsection-items">
-                        {unreadItems.map(renderInboxItem)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="sidebar-subsection">
-                    <button
-                      className={`sidebar-item sidebar-subsection-header ${readCount === 0 ? "sidebar-subsection-header--empty" : ""}`}
-                      onClick={() => readCount > 0 && toggleSection("inbox_read")}
-                    >
-                      <span className="sidebar-item-dot" />
-                      <span className="sidebar-item-name">Read</span>
-                      <span className="sidebar-item-count">({readCount})</span>
-                      <span className="sidebar-item-arrow sidebar-subsection-arrow">
-                        {readCount === 0 ? "" : isReadCollapsed ? "\u25B8" : "\u25BE"}
-                      </span>
-                    </button>
-                    {!isReadCollapsed && readItems.length > 0 && (
-                      <div className="sidebar-subsection-items">
-                        {readItems.map(renderInboxItem)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })()}
-
-        {/* Idea sections: Unexplored, Exploring, Well-understood */}
-        {SECTIONS.map(({ key, label }) => {
-          const items = grouped[key];
+        {([
+          ["waiting_on_user", "Threads Waiting On You"],
+          ["waiting_on_agent", "Threads Waiting On Agent"],
+          ["closed", "Closed Threads"],
+        ] as const).map(([status, label]) => {
+          const items = threadsByStatus[status];
+          const key = `threads_${status}`;
           const isCollapsed = collapsed[key] ?? false;
-
           return (
             <div key={key} className="sidebar-section">
               <button
@@ -288,19 +221,76 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
                 onClick={() => items.length > 0 && toggleSection(key)}
               >
                 <span className="sidebar-section-arrow">
-                  {items.length === 0 ? "" : isCollapsed ? "\u25B8" : "\u25BE"}
+                  {items.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
                 </span>
                 <span className="sidebar-section-label">{label}</span>
                 <span className="sidebar-section-count">{items.length}</span>
               </button>
+              {!isCollapsed && items.length > 0 && (
+                <div className="sidebar-section-items">
+                  {items.map(renderThreadButton)}
+                </div>
+              )}
+            </div>
+          );
+        })}
 
+        {(() => {
+          const pendingProposals = proposals
+            .filter((p) => p.status === "pending")
+            .sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
+          const isCollapsed = collapsed.proposals_pending ?? false;
+          return (
+            <div className="sidebar-section">
+              <button
+                className={`sidebar-section-header ${pendingProposals.length === 0 ? "sidebar-section-header--empty" : ""}`}
+                onClick={() => pendingProposals.length > 0 && toggleSection("proposals_pending")}
+              >
+                <span className="sidebar-section-arrow">
+                  {pendingProposals.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
+                </span>
+                <span className="sidebar-section-label">Pending Proposals</span>
+                <span className="sidebar-section-count">{pendingProposals.length}</span>
+              </button>
+              {!isCollapsed && pendingProposals.length > 0 && (
+                <div className="sidebar-section-items">
+                  {pendingProposals.map((proposal) => (
+                    <button
+                      key={`proposal-${proposal.slug}`}
+                      id={`sidebar-proposal-${proposal.slug}`}
+                      className={`sidebar-study-item ${proposal.slug === selectedProposal ? "sidebar-study-item--selected" : ""}`}
+                      onClick={() => onNavigate({ type: "proposal", slug: proposal.slug })}
+                    >
+                      <span className="sidebar-study-name">{proposal.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {SECTIONS.map(({ key, label }) => {
+          const items = grouped[key];
+          const isCollapsed = collapsed[key] ?? false;
+          return (
+            <div key={key} className="sidebar-section">
+              <button
+                className={`sidebar-section-header ${items.length === 0 ? "sidebar-section-header--empty" : ""}`}
+                onClick={() => items.length > 0 && toggleSection(key)}
+              >
+                <span className="sidebar-section-arrow">
+                  {items.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
+                </span>
+                <span className="sidebar-section-label">{label}</span>
+                <span className="sidebar-section-count">{items.length}</span>
+              </button>
               {!isCollapsed && (
                 <div className="sidebar-section-items">
                   {items.map((idea) => {
                     const isExpanded = expandedIdeas[idea.slug] ?? false;
                     const studies = studiesCache[idea.slug] ?? [];
                     const isIdeaSelected = idea.slug === selectedSlug && !selectedStudy;
-
                     return (
                       <div key={idea.slug}>
                         <button
@@ -312,17 +302,14 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
                             className={`sidebar-item-dot ${activeSlugs.has(idea.slug) ? "sidebar-item-dot--active" : ""}`}
                             style={activeSlugs.has(idea.slug) ? { background: WORKER_TYPE_COLORS[activeWorkers.get(idea.slug)!.type] } : undefined}
                           />
-                          <span className="sidebar-item-name">
-                            {idea.title}
-                          </span>
+                          <span className="sidebar-item-name">{idea.title}</span>
                           {(studyCounts[idea.slug] > 0 || studies.length > 0) && (
                             <>
                               <span className="sidebar-item-count">({studyCounts[idea.slug] ?? studies.length})</span>
-                              <span className="sidebar-item-arrow">{isExpanded ? "\u25BE" : "\u25B8"}</span>
+                              <span className="sidebar-item-arrow">{isExpanded ? "▾" : "▸"}</span>
                             </>
                           )}
                         </button>
-
                         {isExpanded && studies.map((study) => (
                           <button
                             key={study.study_number}
@@ -347,7 +334,6 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
             .filter((p) => p.status === "rejected")
             .sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
           const isCollapsed = collapsed.rejected_proposals ?? false;
-
           return (
             <div className="sidebar-section">
               <button
@@ -355,7 +341,7 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
                 onClick={() => rejectedProposals.length > 0 && toggleSection("rejected_proposals")}
               >
                 <span className="sidebar-section-arrow">
-                  {rejectedProposals.length === 0 ? "" : isCollapsed ? "\u25B8" : "\u25BE"}
+                  {rejectedProposals.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
                 </span>
                 <span className="sidebar-section-label">Rejected Proposals</span>
                 <span className="sidebar-section-count">{rejectedProposals.length}</span>
@@ -377,14 +363,10 @@ export function Sidebar({ ideas, proposals, messages, activeWorkers, selectedSlu
             </div>
           );
         })()}
-
       </div>
+
       <div className="sidebar-bottom">
-        <button
-          className="icon-btn sidebar-collapse-btn"
-          onClick={onCollapse}
-          title="Hide sidebar"
-        >
+        <button className="icon-btn sidebar-collapse-btn" onClick={onCollapse} title="Hide sidebar">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
             <rect x="1" y="2" width="14" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
             <line x1="10" y1="2" x2="10" y2="14" stroke="currentColor" strokeWidth="1.5" />

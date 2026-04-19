@@ -18,6 +18,7 @@ class RunType(Enum):
     INITIAL_EXPLORATION = "initial_exploration"
     FOLLOW_UP_RESEARCH = "follow_up_research"
     CONNECTIVE_RESEARCH = "connective_research"
+    THREAD_RESPONSE = "thread_response"
 
 
 class RunService:

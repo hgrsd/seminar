@@ -12,10 +12,12 @@ import {
 import type {
   ActivityEvent,
   Idea,
-  Message,
   Proposal,
+  Responder,
   Settings,
   SnapshotState,
+  ThreadDetail,
+  ThreadSummary,
   Worker,
   WSMessage,
 } from "../types";
@@ -26,7 +28,8 @@ interface SeminarState {
   activity: ActivityEvent[];
   studyCounts: Record<string, number>;
   proposals: Proposal[];
-  messages: Message[];
+  threads: ThreadSummary[];
+  responders: Responder[];
   paused: boolean;
   sessionCost: number;
   connected: boolean;
@@ -44,13 +47,15 @@ interface SeminarActions {
   reopenIdea: (slug: string) => Promise<void>;
   resetIdea: (slug: string) => Promise<void>;
   deleteIdea: (slug: string) => Promise<void>;
-  addDirectorNote: (slug: string, body: string) => Promise<void>;
+  addDirectorNote: (slug: string, body: string, threadId?: number) => Promise<void>;
   approveProposal: (slug: string) => Promise<void>;
   rejectProposal: (slug: string) => Promise<void>;
   deleteProposal: (slug: string) => Promise<void>;
-  getMessageContent: (id: number, signal?: AbortSignal) => Promise<{ content: string; meta: { title: string; author: string } }>;
-  markMessageRead: (id: number) => Promise<void>;
-  deleteMessage: (id: number) => Promise<void>;
+  createThread: (input: { title: string; body: string; author_name: string; idea_slug?: string }) => Promise<void>;
+  getThread: (id: number, signal?: AbortSignal) => Promise<ThreadDetail>;
+  replyToThread: (id: number, input: { body: string; author_name: string }) => Promise<void>;
+  closeThread: (id: number) => Promise<void>;
+  deleteThread: (id: number) => Promise<void>;
   spawnWorker: (type: "initial_exploration" | "follow_up_research" | "connective_research") => Promise<void>;
   removeWorker: (workerId: number) => Promise<void>;
   killWorkerTask: (workerId: number) => Promise<void>;
@@ -69,7 +74,8 @@ const initialState: SeminarState = {
   activity: [],
   studyCounts: {},
   proposals: [],
-  messages: [],
+  threads: [],
+  responders: [],
   paused: true,
   sessionCost: 0,
   connected: false,
@@ -94,8 +100,8 @@ function sortProposals(proposals: Proposal[]): Proposal[] {
   return [...proposals].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
 }
 
-function sortMessages(messages: Message[]): Message[] {
-  return [...messages].sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
+function sortThreads(threads: ThreadSummary[]): ThreadSummary[] {
+  return [...threads].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 
 function sortWorkers(workers: Worker[]): Worker[] {
@@ -109,7 +115,8 @@ function fromSnapshot(snapshot: SnapshotState, connected: boolean): SeminarState
     activity: snapshot.activity,
     studyCounts: snapshot.study_counts,
     proposals: sortProposals(snapshot.proposals),
-    messages: sortMessages(snapshot.messages),
+    threads: sortThreads(snapshot.threads),
+    responders: snapshot.responders,
     paused: snapshot.paused,
     sessionCost: snapshot.session_cost,
     connected,
@@ -145,15 +152,15 @@ function reduceState(state: SeminarState, msg: WSMessage): SeminarState {
         ...state,
         proposals: state.proposals.filter((proposal) => proposal.slug !== msg.data.slug),
       };
-    case "message_upserted":
+    case "thread_upserted":
       return {
         ...state,
-        messages: sortMessages(upsertByKey(state.messages, msg.data, "id")),
+        threads: sortThreads(upsertByKey(state.threads, msg.data, "id")),
       };
-    case "message_deleted":
+    case "thread_deleted":
       return {
         ...state,
-        messages: state.messages.filter((message) => message.id !== msg.data.id),
+        threads: state.threads.filter((thread) => thread.id !== msg.data.id),
       };
     case "worker_upserted":
       return {
@@ -272,11 +279,11 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     await apiRequest(`/api/ideas/${slug}`, { method: "DELETE" });
   }, []);
 
-  const addDirectorNote = useCallback(async (slug: string, body: string) => {
+  const addDirectorNote = useCallback(async (slug: string, body: string, threadId?: number) => {
     await apiRequest(`/api/ideas/${slug}/director-note`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body, thread_id: threadId }),
     });
   }, []);
 
@@ -292,17 +299,41 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     await apiRequest(`/api/proposals/${slug}`, { method: "DELETE" });
   }, []);
 
-  const getMessageContent = useCallback(async (id: number, signal?: AbortSignal) => {
-    const response = await apiRequest(`/api/messages/${id}/content`, { signal });
-    return response.json() as Promise<{ content: string; meta: { title: string; author: string } }>;
+  const createThread = useCallback(async (input: {
+    title: string;
+    body: string;
+    author_name: string;
+    idea_slug?: string;
+  }) => {
+    await apiRequest("/api/threads", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
   }, []);
 
-  const markMessageRead = useCallback(async (id: number) => {
-    await apiRequest(`/api/messages/${id}/mark-read`, { method: "POST" });
+  const getThread = useCallback(async (id: number, signal?: AbortSignal) => {
+    const response = await apiRequest(`/api/threads/${id}`, { signal });
+    return response.json() as Promise<ThreadDetail>;
   }, []);
 
-  const deleteMessage = useCallback(async (id: number) => {
-    await apiRequest(`/api/messages/${id}`, { method: "DELETE" });
+  const replyToThread = useCallback(async (id: number, input: {
+    body: string;
+    author_name: string;
+  }) => {
+    await apiRequest(`/api/threads/${id}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  }, []);
+
+  const closeThread = useCallback(async (id: number) => {
+    await apiRequest(`/api/threads/${id}/close`, { method: "POST" });
+  }, []);
+
+  const deleteThread = useCallback(async (id: number) => {
+    await apiRequest(`/api/threads/${id}`, { method: "DELETE" });
   }, []);
 
   const spawnWorker = useCallback(async (type: "initial_exploration" | "follow_up_research" | "connective_research") => {
@@ -358,9 +389,11 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
     approveProposal,
     rejectProposal,
     deleteProposal,
-    getMessageContent,
-    markMessageRead,
-    deleteMessage,
+    createThread,
+    getThread,
+    replyToThread,
+    closeThread,
+    deleteThread,
     spawnWorker,
     removeWorker,
     killWorkerTask,
@@ -372,15 +405,17 @@ export function SeminarProvider({ children }: { children: ReactNode }) {
   }), [
     addDirectorNote,
     approveProposal,
+    closeThread,
+    createThread,
     createIdea,
     deleteIdea,
     deleteProposal,
-    getMessageContent,
-    markMessageRead,
-    deleteMessage,
+    deleteThread,
+    getThread,
     killWorkerTask,
     markIdeaDone,
     pause,
+    replyToThread,
     rejectProposal,
     removeWorker,
     reopenIdea,

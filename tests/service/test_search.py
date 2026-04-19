@@ -26,66 +26,73 @@ class SearchServiceTests(unittest.TestCase):
         if self.temp_dir is not None:
             self.temp_dir.cleanup()
 
-    def test_search_includes_messages_in_corpus(self) -> None:
+    def test_search_includes_threads_in_corpus(self) -> None:
         with db.connect() as conn:
             conn.execute(
                 """
-                INSERT INTO ideas (
-                    slug, recorded_at, last_studied, current_state, locked_by, title, author, body
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO threads (title, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
                 """,
                 (
-                    "topic",
+                    "Question about corpus coverage",
+                    "waiting_on_user",
                     "2024-01-01T00:00:00Z",
-                    None,
-                    "not_started",
-                    None,
-                    "Topic",
-                    None,
-                    "Topic body",
+                    "2024-01-01T00:00:00Z",
                 ),
             )
             conn.execute(
                 """
-                INSERT INTO messages (recorded_at, title, author, body, idea_slug)
+                INSERT INTO thread_messages (thread_id, author_type, author_name, body, created_at)
                 VALUES (?, ?, ?, ?, ?)
                 """,
                 (
-                    "2024-01-01T00:00:00Z",
-                    "Question about corpus coverage",
+                    1,
+                    "agent",
                     "agent-1",
-                    "Please add messages to the searchable corpus so inbox notes appear in results.",
-                    "topic",
+                    "Please add threads to the searchable corpus so conversations appear in results.",
+                    "2024-01-01T00:00:00Z",
                 ),
             )
             conn.commit()
 
         self.assertEqual(
-            self._search_service().search("inbox"),
+            self._search_service().search("conversations"),
             [
                 SearchHit(
-                    type="message",
-                    slug="topic",
+                    type="thread",
+                    slug=None,
                     title="Question about corpus coverage",
-                    snippet="Please add messages to the searchable corpus so inbox notes appear in results.",
-                    message_id=1,
+                    snippet="Please add threads to the searchable corpus so conversations appear in results.",
+                    thread_id=1,
                 )
             ],
         )
 
-    def test_search_returns_message_without_idea_slug(self) -> None:
+    def test_search_returns_thread_without_idea_slug(self) -> None:
         with db.connect() as conn:
             conn.execute(
                 """
-                INSERT INTO messages (recorded_at, title, author, body, idea_slug)
+                INSERT INTO threads (title, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                (
+                    "General note",
+                    "waiting_on_user",
+                    "2024-01-01T00:00:00Z",
+                    "2024-01-01T00:00:00Z",
+                ),
+            )
+            conn.execute(
+                """
+                INSERT INTO thread_messages (thread_id, author_type, author_name, body, created_at)
                 VALUES (?, ?, ?, ?, ?)
                 """,
                 (
-                    "2024-01-01T00:00:00Z",
-                    "General note",
+                    1,
+                    "agent",
                     "agent-2",
                     "A free-floating reminder about annotations.",
-                    None,
+                    "2024-01-01T00:00:00Z",
                 ),
             )
             conn.commit()
@@ -94,11 +101,11 @@ class SearchServiceTests(unittest.TestCase):
             self._search_service().search("reminder"),
             [
                 SearchHit(
-                    type="message",
+                    type="thread",
                     slug=None,
                     title="General note",
                     snippet="A free-floating reminder about annotations.",
-                    message_id=1,
+                    thread_id=1,
                 )
             ],
         )

@@ -1,4 +1,4 @@
-"""Full-text search across ideas, studies, proposals, annotations, and messages."""
+"""Full-text search across ideas, studies, proposals, annotations, and threads."""
 
 from __future__ import annotations
 
@@ -58,18 +58,23 @@ class SearchService:
                     annotation_id=row["id"],
                 )))
 
-            message_rows = conn.execute(
-                "SELECT id, idea_slug, title, body FROM messages WHERE title LIKE ? OR body LIKE ?",
+            thread_rows = conn.execute(
+                """
+                SELECT DISTINCT t.id, t.title, tm.body
+                FROM threads t
+                JOIN thread_messages tm ON tm.thread_id = t.id
+                WHERE t.title LIKE ? OR tm.body LIKE ?
+                """,
                 (like_pattern, like_pattern),
             ).fetchall()
-            for row in message_rows:
+            for row in thread_rows:
                 score, snippet = self._score(q, row["title"] or "", row["body"] or "")
                 scored.append((score, SearchHit(
-                    type="message",
-                    slug=row["idea_slug"],
+                    type="thread",
+                    slug=None,
                     title=row["title"] or "",
                     snippet=snippet,
-                    message_id=row["id"],
+                    thread_id=row["id"],
                 )))
 
         scored.sort(key=lambda x: x[0], reverse=True)

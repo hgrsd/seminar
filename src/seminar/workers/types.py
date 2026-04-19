@@ -59,7 +59,22 @@ class ConnectiveResearchWorker:
         return f"connective-research-worker{worker_id}.log"
 
 
-WorkerType = InitialExplorationWorker | FollowUpResearchWorker | ConnectiveResearchWorker
+@dataclass
+class ThreadResponderWorker:
+    interval: float
+    timeout: float | None
+    agent_cmd: str
+    logs_dir: Path
+    scratch_dir: Path
+    prompt_preamble: str
+
+    run_type = RunType.THREAD_RESPONSE
+
+    def log_filename(self, worker_id: int, slug: str | None, study_number: int | None) -> str:
+        return f"thread-{slug}-worker{worker_id}.log"
+
+
+WorkerType = InitialExplorationWorker | FollowUpResearchWorker | ConnectiveResearchWorker | ThreadResponderWorker
 
 
 # --- Worker state ---

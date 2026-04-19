@@ -16,6 +16,7 @@ from seminar.workers.types import (
     EventCallback,
     FollowUpResearchWorker,
     InitialExplorationWorker,
+    ThreadResponderWorker,
     WorkerState,
     WorkerType,
 )
@@ -53,6 +54,8 @@ def _create_executor(
                 emit,
                 on_state_change=on_state_change,
             )
+        case ThreadResponderWorker():
+            raise ValueError("Thread responder workers are launched on-demand, not through WorkerPool")
 
 
 @dataclass

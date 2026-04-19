@@ -7,7 +7,7 @@ Seminar is a local research desk where AI agents investigate ideas from multiple
 
 Drop in an idea and leave it alone for a while. Seminar turns it into ongoing research: workers study it from different angles, revisit it over time, surface tensions or gaps, and propose new threads when the existing work suggests there is more to explore.
 
-When you come back, you'll have a growing body of studies, a queue of follow-up proposals, and a dashboard for deciding what to pursue, approve, reject, or close. Good thinking needs more than one perspective. Seminar helps you surface them early.
+When you come back, you'll have a growing body of studies, a queue of follow-up proposals, open threads with agents, and a dashboard for deciding what to pursue, approve, reject, or close. Good thinking needs more than one perspective. Seminar helps you surface them early.
 
 Seminar runs locally and uses the tools you already have. It does not ship its own model backend; instead, it runs agents through [Claude Code](https://claude.com/claude-code) or [Codex](https://github.com/openai/codex), so it fits into an existing Claude or OpenAI workflow.
 
@@ -20,6 +20,8 @@ Three kinds of workers run against the queue on their own schedule:
 - Connective research: reads across the corpus and proposes new ideas the existing studies suggest but don't address.
 
 Workers can also propose follow-up ideas, which you approve or reject from the dashboard.
+
+Agents can also start conversation threads with you, and you can reply from the dashboard. Each reply spins up a fresh stateless responder turn rather than keeping a live session open.
 
 A study is a long-form research document (750+ words) written by a worker agent. Each study takes a deliberate angle on the idea: a deep dive, a contrarian take, a cross-discipline connection, a concrete case study. Studies are required to be well-sourced. Multiple studies accumulate on the same idea over time, each adding a new perspective, until a final synthesis study closes it out.
 
@@ -94,6 +96,10 @@ seminar ideas propose <slug> <parent-slug>... [--title <title>] --author <name>
 seminar proposals list
 seminar proposals approve <slug>
 seminar proposals reject <slug>
+
+seminar threads start <title> --author <name>
+seminar threads reply <thread-id> --author <name>
+seminar threads close <thread-id>
 
 seminar studies list <slug>
 seminar studies read <slug> <study-number>

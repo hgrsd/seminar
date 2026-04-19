@@ -33,6 +33,7 @@ export const WORKER_TYPE_LABELS: Record<string, string> = {
   initial_exploration: "Initial Exploration",
   follow_up_research: "Follow-up Research",
   connective_research: "Connective Research",
+  thread_response: "Thread Response",
 };
 
 export function workerTypeLabel(type: string): string {

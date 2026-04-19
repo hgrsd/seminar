@@ -13,6 +13,7 @@ interface Props {
   onWorkersClick: () => void;
   onSpawnWorker: (type: "initial_exploration" | "follow_up_research" | "connective_research") => void;
   onNewIdea: () => void;
+  onNewThread: () => void;
   onOpenSettings: () => void;
   onNavigate: (target: NavigationTarget) => void;
 }
@@ -27,6 +28,7 @@ export function TopBar({
   onWorkersClick,
   onSpawnWorker,
   onNewIdea,
+  onNewThread,
   onOpenSettings,
   onNavigate,
 }: Props) {
@@ -70,7 +72,7 @@ export function TopBar({
           <circle cx="7" cy="7" r="5.25" stroke="currentColor" strokeWidth="1.5" />
           <line x1="10.75" y1="10.75" x2="14" y2="14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
         </svg>
-        <span className="topbar-search-placeholder">Search ideas, studies, proposals...</span>
+        <span className="topbar-search-placeholder">Search ideas, studies, proposals, threads...</span>
       </button>
 
       <SearchModal
@@ -126,6 +128,9 @@ export function TopBar({
         </div>
         <button className="topbar-btn topbar-btn--primary" onClick={onNewIdea}>
           + New Idea
+        </button>
+        <button className="topbar-btn" onClick={onNewThread}>
+          + Thread
         </button>
         <button
           className="icon-btn topbar-theme-toggle"

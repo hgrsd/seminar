@@ -3,7 +3,7 @@ import { useStudies } from "./hooks/useStudies";
 import { useActiveWorkers } from "./hooks/useActiveWorkers";
 import { useIdeas } from "./hooks/useIdeas";
 import { useProposals } from "./hooks/useProposals";
-import { useMessages } from "./hooks/useMessages";
+import { useThreads } from "./hooks/useThreads";
 import { useWorkers } from "./hooks/useWorkers";
 import { useSystemState } from "./hooks/useSystemState";
 import { useActivity } from "./hooks/useActivity";
@@ -13,6 +13,7 @@ import { ReadingPane } from "./components/ReadingPane";
 import { ActivityDrawer } from "./components/ActivityDrawer";
 import { WorkerScreen } from "./components/WorkerScreen";
 import { NewIdeaModal } from "./components/NewIdeaModal";
+import { NewThreadModal } from "./components/NewThreadModal";
 import { SettingsModal } from "./components/SettingsModal";
 import type { NavigationTarget } from "./types";
 import "./App.css";
@@ -21,7 +22,7 @@ export default function App() {
   const { ideas, studyCounts } = useIdeas();
   const { workers, spawnWorker, removeWorker, killWorkerTask } = useWorkers();
   const { proposals } = useProposals();
-  const { messages } = useMessages();
+  const { threads } = useThreads();
   const { paused, sessionCost, pause, resume } = useSystemState();
   const { activity } = useActivity();
   const { studiesCache, fetchStudies } = useStudies(studyCounts);
@@ -29,11 +30,14 @@ export default function App() {
   const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
   const [selectedStudy, setSelectedStudy] = useState<number | null>(null);
   const [selectedProposal, setSelectedProposal] = useState<string | null>(null);
-  const [selectedMessage, setSelectedMessage] = useState<number | null>(null);
+  const [selectedThread, setSelectedThread] = useState<number | null>(null);
   const [scrollToAnnotationId, setScrollToAnnotationId] = useState<number | null>(null);
   const [workerScreenOpen, setWorkerScreenOpen] = useState(false);
   const [initialWorkerId, setInitialWorkerId] = useState<number | null>(null);
   const [showNewIdea, setShowNewIdea] = useState(false);
+  const [showNewThread, setShowNewThread] = useState(false);
+  const [newThreadIdeaSlug, setNewThreadIdeaSlug] = useState<string | null>(null);
+  const [newThreadInitialTitle, setNewThreadInitialTitle] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [dark, setDark] = useState(() => localStorage.getItem("theme") === "dark");
@@ -66,25 +70,25 @@ export default function App() {
         setSelectedSlug(target.slug);
         setSelectedStudy(null);
         setSelectedProposal(null);
-        setSelectedMessage(null);
+        setSelectedThread(null);
         setScrollToAnnotationId(null);
         break;
       case "study":
         setSelectedSlug(target.slug);
         setSelectedStudy(target.study_number);
         setSelectedProposal(null);
-        setSelectedMessage(null);
+        setSelectedThread(null);
         setScrollToAnnotationId(null);
         break;
       case "proposal":
         setSelectedProposal(target.slug);
         setSelectedSlug(null);
         setSelectedStudy(null);
-        setSelectedMessage(null);
+        setSelectedThread(null);
         setScrollToAnnotationId(null);
         break;
-      case "message":
-        setSelectedMessage(target.id);
+      case "thread":
+        setSelectedThread(target.id);
         setSelectedProposal(null);
         setSelectedSlug(null);
         setSelectedStudy(null);
@@ -94,6 +98,7 @@ export default function App() {
         setSelectedSlug(target.slug);
         setSelectedStudy(target.study_number);
         setSelectedProposal(null);
+        setSelectedThread(null);
         setScrollToAnnotationId(target.annotation_id);
         break;
     }
@@ -129,6 +134,7 @@ export default function App() {
         onWorkersClick={() => { setWorkerScreenOpen((prev) => !prev); setInitialWorkerId(null); }}
         onSpawnWorker={handleSpawnWorker}
         onNewIdea={() => setShowNewIdea(true)}
+        onNewThread={() => { setNewThreadIdeaSlug(null); setNewThreadInitialTitle(""); setShowNewThread(true); }}
         onOpenSettings={() => setShowSettings(true)}
         onNavigate={navigateTo}
       />
@@ -138,12 +144,12 @@ export default function App() {
           <Sidebar
             ideas={ideas}
             proposals={proposals}
-            messages={messages}
+            threads={threads}
             activeWorkers={activeWorkers}
             selectedSlug={selectedSlug}
             selectedStudy={selectedStudy}
             selectedProposal={selectedProposal}
-            selectedMessage={selectedMessage}
+            selectedThread={selectedThread}
             studyCounts={studyCounts}
             studiesCache={studiesCache}
             fetchStudies={fetchStudies}
@@ -177,7 +183,7 @@ export default function App() {
           <ReadingPane
             idea={selectedIdea}
             selectedProposal={selectedProposal ? proposals.find((p) => p.slug === selectedProposal) ?? null : null}
-            selectedMessage={selectedMessage ? messages.find((m) => m.id === selectedMessage) ?? null : null}
+            selectedThread={selectedThread ? threads.find((t) => t.id === selectedThread) ?? null : null}
             activeWorkers={activeWorkers}
             onWorkerClick={(workerId) => { setInitialWorkerId(workerId); setWorkerScreenOpen(true); }}
             selectedStudy={selectedStudy}
@@ -186,11 +192,16 @@ export default function App() {
             studiesCache={studiesCache}
             fetchStudies={fetchStudies}
             onNavigate={navigateTo}
+            onStartThread={(ideaSlug, initialTitle) => {
+              setNewThreadIdeaSlug(ideaSlug);
+              setNewThreadInitialTitle(initialTitle);
+              setShowNewThread(true);
+            }}
             onClose={() => {
               setSelectedSlug(null);
               setSelectedStudy(null);
               setSelectedProposal(null);
-              setSelectedMessage(null);
+              setSelectedThread(null);
               setScrollToAnnotationId(null);
             }}
           />
@@ -201,6 +212,17 @@ export default function App() {
 
       {showNewIdea && (
         <NewIdeaModal onClose={() => setShowNewIdea(false)} />
+      )}
+      {showNewThread && (
+        <NewThreadModal
+          ideaSlug={newThreadIdeaSlug}
+          initialTitle={newThreadInitialTitle}
+          onClose={() => {
+            setShowNewThread(false);
+            setNewThreadIdeaSlug(null);
+            setNewThreadInitialTitle("");
+          }}
+        />
       )}
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)} />
