@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { format, addDays, parseISO, isToday, isYesterday } from "date-fns";
-import type { Idea, Worker, WorkerLogEvent, RunEntry, NavigationTarget } from "../types";
+import type { Idea, ThreadSummary, Worker, WorkerLogEvent, RunEntry, NavigationTarget } from "../types";
 import { workerTypeLabel } from "../utils";
 
 interface Props {
   workers: Worker[];
   ideas: Idea[];
+  threads: ThreadSummary[];
   initialWorkerId: number | null;
   onClose: () => void;
   onNavigate: (target: NavigationTarget) => void;
@@ -288,11 +289,13 @@ function HistoryLogView({
   onBack,
   onNavigate,
   titleFor,
+  threadTitleFor,
 }: {
   run: RunEntry;
   onBack: () => void;
   onNavigate: (target: NavigationTarget) => void;
   titleFor: (slug: string | null) => string | null;
+  threadTitleFor: (threadId: number) => string | null;
 }) {
   const [events, setEvents] = useState<WorkerLogEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -334,33 +337,49 @@ function HistoryLogView({
         </div>
       </div>
 
-      {run.slug && (
-        <p className="worker-detail-working-on">
-          {run.study_title ? (
-            <>
+      {run.slug && (() => {
+        const threadMatch = run.slug.match(/^thread-(\d+)$/);
+        if (threadMatch) {
+          const threadId = parseInt(threadMatch[1], 10);
+          return (
+            <p className="worker-detail-working-on">
               <button
                 className="worker-detail-slug"
-                onClick={() => onNavigate(
-                  run.study_number != null
-                    ? { type: "study", slug: run.slug!, study_number: run.study_number }
-                    : { type: "idea", slug: run.slug! }
-                )}
+                onClick={() => onNavigate({ type: "thread", id: threadId })}
+              >
+                {threadTitleFor(threadId) ?? run.slug}
+              </button>
+            </p>
+          );
+        }
+        return (
+          <p className="worker-detail-working-on">
+            {run.study_title ? (
+              <>
+                <button
+                  className="worker-detail-slug"
+                  onClick={() => onNavigate(
+                    run.study_number != null
+                      ? { type: "study", slug: run.slug!, study_number: run.study_number }
+                      : { type: "idea", slug: run.slug! }
+                  )}
+                >
+                  {titleFor(run.slug)}
+                </button>
+                {run.study_number != null && <> &middot; Study #{run.study_number}</>}
+                {" — "}{run.study_title}
+              </>
+            ) : (
+              <button
+                className="worker-detail-slug"
+                onClick={() => onNavigate({ type: "idea", slug: run.slug! })}
               >
                 {titleFor(run.slug)}
               </button>
-              {run.study_number != null && <> &middot; Study #{run.study_number}</>}
-              {" — "}{run.study_title}
-            </>
-          ) : (
-            <button
-              className="worker-detail-slug"
-              onClick={() => onNavigate({ type: "idea", slug: run.slug! })}
-            >
-              {titleFor(run.slug)}
-            </button>
-          )}
-        </p>
-      )}
+            )}
+          </p>
+        );
+      })()}
 
       <div className="worker-detail-log-section">
         <h3 className="worker-detail-section-title">Log</h3>
@@ -412,12 +431,14 @@ function GlobalHistory({
   onViewLog,
   onGoToWorker,
   titleFor,
+  threadTitleFor,
 }: {
   workers: Worker[];
   onNavigate: (target: NavigationTarget) => void;
   onViewLog: (run: RunEntry) => void;
   onGoToWorker: (workerId: number) => void;
   titleFor: (slug: string | null) => string | null;
+  threadTitleFor: (threadId: number) => string | null;
 }) {
   const [runs, setRuns] = useState<RunEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -507,21 +528,38 @@ function GlobalHistory({
                 </span>
               </div>
               <div className="history-entry-body">
-                {run.slug && (
-                  <button
-                    className="history-entry-slug"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onNavigate(
-                        run.study_number != null
-                          ? { type: "study", slug: run.slug!, study_number: run.study_number }
-                          : { type: "idea", slug: run.slug! }
-                      );
-                    }}
-                  >
-                    {titleFor(run.slug)}
-                  </button>
-                )}
+                {run.slug && (() => {
+                  const threadMatch = run.slug.match(/^thread-(\d+)$/);
+                  if (threadMatch) {
+                    const threadId = parseInt(threadMatch[1], 10);
+                    return (
+                      <button
+                        className="history-entry-slug"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onNavigate({ type: "thread", id: threadId });
+                        }}
+                      >
+                        {threadTitleFor(threadId) ?? run.slug}
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      className="history-entry-slug"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNavigate(
+                          run.study_number != null
+                            ? { type: "study", slug: run.slug!, study_number: run.study_number }
+                            : { type: "idea", slug: run.slug! }
+                        );
+                      }}
+                    >
+                      {titleFor(run.slug)}
+                    </button>
+                  );
+                })()}
                 {run.study_title && (
                   <span className="history-entry-title">{run.study_title}</span>
                 )}
@@ -547,13 +585,15 @@ function GlobalHistory({
 
 type Tab = "workers" | "history";
 
-export function WorkerScreen({ workers, ideas, initialWorkerId, onClose, onNavigate, onDismissWorker, onKillTask }: Props) {
+export function WorkerScreen({ workers, ideas, threads, initialWorkerId, onClose, onNavigate, onDismissWorker, onKillTask }: Props) {
   const [tab, setTab] = useState<Tab>("workers");
   const [selectedId, setSelectedId] = useState<number | null>(initialWorkerId);
   const [historyRun, setHistoryRun] = useState<RunEntry | null>(null);
 
   const titleBySlug = Object.fromEntries(ideas.map((i) => [i.slug, i.title]));
   const titleFor = (slug: string | null) => (slug ? titleBySlug[slug] ?? slug : null);
+  const titleById = Object.fromEntries(threads.map((t) => [t.id, t.title]));
+  const threadTitleFor = (threadId: number) => titleById[threadId] ?? null;
 
   useEffect(() => {
     if (initialWorkerId != null) {
@@ -578,6 +618,7 @@ export function WorkerScreen({ workers, ideas, initialWorkerId, onClose, onNavig
               onBack={() => setHistoryRun(null)}
               onNavigate={onNavigate}
               titleFor={titleFor}
+              threadTitleFor={threadTitleFor}
             />
           </div>
         </div>
@@ -638,6 +679,7 @@ export function WorkerScreen({ workers, ideas, initialWorkerId, onClose, onNavig
               onViewLog={(run) => setHistoryRun(run)}
               onGoToWorker={(workerId) => { setSelectedId(workerId); setTab("workers"); }}
               titleFor={titleFor}
+              threadTitleFor={threadTitleFor}
             />
           )}
         </div>

@@ -427,7 +427,7 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
 
             {!threadLoading && (
               <footer className="reading-pane-actions thread-pane-actions">
-                {selectedThread.status !== "closed" && (
+                {selectedThread.status === "waiting_on_user" && (
                   <div className="thread-composer">
                     <input
                       className="modal-input"

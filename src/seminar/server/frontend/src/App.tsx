@@ -173,6 +173,7 @@ export default function App() {
           <WorkerScreen
             workers={workers}
             ideas={ideas}
+            threads={threads}
             initialWorkerId={initialWorkerId}
             onClose={() => { setWorkerScreenOpen(false); setInitialWorkerId(null); }}
             onNavigate={navigateTo}
