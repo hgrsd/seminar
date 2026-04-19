@@ -27,6 +27,7 @@ class ThreadResponderRunner:
     def __init__(
         self,
         cfg: Config,
+        loop: asyncio.AbstractEventLoop,
         run_service: RunService,
         threads: ThreadService,
         ideas: IdeaService,
@@ -34,6 +35,7 @@ class ThreadResponderRunner:
         hub: BroadcastHub,
     ) -> None:
         self.cfg = cfg
+        self._loop = loop
         self.run_service = run_service
         self.threads = threads
         self.ideas = ideas
@@ -47,6 +49,9 @@ class ThreadResponderRunner:
     def launch(self, thread_id: int, responder: str) -> None:
         if responder != THREAD_RESPONDER_ID:
             raise ValueError(f"Unknown responder: {responder}")
+        self._loop.call_soon_threadsafe(self._start_task, thread_id)
+
+    def _start_task(self, thread_id: int) -> None:
         asyncio.create_task(self._run(thread_id))
 
     async def _run(self, thread_id: int) -> None:

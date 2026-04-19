@@ -84,6 +84,7 @@ async def lifespan(app: FastAPI):
     app.state.run_service = RunService(cfg.logs_dir, provider, connect)
     app.state.thread_runner = ThreadResponderRunner(
         cfg,
+        asyncio.get_running_loop(),
         app.state.run_service,
         app.state.thread_service,
         app.state.idea_service,
