@@ -426,15 +426,7 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
             )}
 
             {!threadLoading && (
-              <footer className="reading-pane-actions">
-                <div className="action-buttons">
-                  {selectedThread.status !== "closed" && (
-                    <button className="action-btn" onClick={handleCloseThread}>Close Thread</button>
-                  )}
-                  <button className="action-btn" onClick={handleDeleteThread}>
-                    {confirmDeleteThread ? "Confirm Delete" : "Delete"}
-                  </button>
-                </div>
+              <footer className="reading-pane-actions thread-pane-actions">
                 {selectedThread.status !== "closed" && (
                   <div className="thread-composer">
                     <input
@@ -458,6 +450,17 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
                     </div>
                   </div>
                 )}
+                <div className="studies-divider thread-actions-divider">
+                  <span>Thread Actions</span>
+                </div>
+                <div className="action-buttons">
+                  {selectedThread.status !== "closed" && (
+                    <button className="action-btn" onClick={handleCloseThread}>Close Thread</button>
+                  )}
+                  <button className="action-btn" onClick={handleDeleteThread}>
+                    {confirmDeleteThread ? "Confirm Delete" : "Delete"}
+                  </button>
+                </div>
               </footer>
             )}
           </article>
@@ -867,7 +870,7 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
 
           {!loading && studies.length > 0 && (
             <section className="studies-section">
-              <div className="studies-divider">
+              <div className="studies-divider studies-divider--plain">
                 <span>Studies ({studies.length})</span>
               </div>
               {studies.map((study, i) => (
@@ -883,38 +886,35 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
 
           {!loading && (
             <section className="director-note-section">
-              <div className="idea-thread-section-card">
-                <div className="idea-thread-section-header">
-                  <div className="studies-divider studies-divider--compact">
-                    <span>Threads ({ideaThreads.length})</span>
-                  </div>
+              <div className="section-header-row">
+                <div className="studies-divider studies-divider--compact studies-divider--plain">
+                  <span>Threads ({ideaThreads.length})</span>
+                </div>
+                <button
+                  className="action-btn btn--primary"
+                  onClick={() => onStartThread(idea.slug, `About ${idea.title}`)}
+                >
+                  + Thread
+                </button>
+              </div>
+              <div className="idea-thread-list">
+                {ideaThreads.map((thread) => (
                   <button
-                    className="action-btn btn--primary"
-                    onClick={() => onStartThread(idea.slug, `About ${idea.title}`)}
+                    key={thread.id}
+                    className="study-card idea-thread-card"
+                    onClick={() => onNavigate({ type: "thread", id: thread.id })}
                   >
-                    New Thread
+                    <div className="study-card-header">
+                      <span className="study-card-number">
+                        {thread.status === "waiting_on_user" ? "Waiting on you" : thread.status === "waiting_on_agent" ? "Waiting on agent" : "Closed"}
+                      </span>
+                      {thread.updated_at && (
+                        <span className="study-card-time">{relativeTime(thread.updated_at)}</span>
+                      )}
+                    </div>
+                    <div className="study-card-title idea-thread-card-title">{thread.title}</div>
                   </button>
-                </div>
-                <div className="idea-thread-list">
-                  {ideaThreads.map((thread) => (
-                    <button
-                      key={thread.id}
-                      className="idea-thread-item"
-                      onClick={() => onNavigate({ type: "thread", id: thread.id })}
-                    >
-                      <div className="idea-thread-item-main">
-                        <span className="idea-thread-item-title">{thread.title}</span>
-                        <span className="idea-thread-item-meta">
-                          {thread.status === "waiting_on_user" ? "Waiting on you" : thread.status === "waiting_on_agent" ? "Waiting on agent" : "Closed"}
-                        </span>
-                      </div>
-                      {thread.status === "waiting_on_user" && <span className="sidebar-thread-dot idea-thread-item-dot" aria-hidden="true" />}
-                    </button>
-                  ))}
-                  {ideaThreads.length === 0 && (
-                    <div className="activity-empty">No threads for this idea yet</div>
-                  )}
-                </div>
+                ))}
               </div>
             </section>
           )}

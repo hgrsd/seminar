@@ -156,11 +156,14 @@ export function Sidebar({
     <button
       key={`thread-${thread.id}`}
       id={`sidebar-thread-${thread.id}`}
-      className={`sidebar-study-item ${thread.id === selectedThread ? "sidebar-study-item--selected" : ""}`}
+      className={`sidebar-item sidebar-thread-item ${thread.id === selectedThread ? "sidebar-item--selected" : ""}`}
       onClick={() => onNavigate({ type: "thread", id: thread.id })}
     >
-      {thread.status === "waiting_on_user" && <span className="sidebar-thread-dot" aria-hidden="true" />}
-      <span className="sidebar-study-name">{thread.title}</span>
+      <span
+        className={`sidebar-item-dot sidebar-thread-dot ${thread.status === "waiting_on_user" ? "sidebar-thread-dot--active" : "sidebar-thread-dot--hidden"}`}
+        aria-hidden="true"
+      />
+      <span className="sidebar-item-name">{thread.title}</span>
     </button>
   );
 
