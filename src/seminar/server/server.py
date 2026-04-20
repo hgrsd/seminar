@@ -45,7 +45,10 @@ class SPAStaticFiles(StaticFiles):
         response = await super().get_response(path, scope)
         if response.status_code != 404 or "." in Path(path).name:
             return response
-        return FileResponse(Path(self.directory) / "index.html")
+        directory = self.directory
+        if directory is None:
+            return response
+        return FileResponse(Path(directory) / "index.html")
 
 
 def _acquire_file_lock():
