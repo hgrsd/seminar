@@ -5,80 +5,76 @@ import { ProposalPane } from "./reading-pane/ProposalPane";
 import { StudyPane } from "./reading-pane/StudyPane";
 import { ThreadPane } from "./reading-pane/ThreadPane";
 
+export type ReadingPaneSelection =
+  | { kind: "empty" }
+  | { kind: "idea"; idea: Idea }
+  | { kind: "study"; idea: Idea; selectedStudy: number; scrollToAnnotationId: number | null; onScrollToAnnotationHandled: () => void }
+  | { kind: "proposal"; proposal: Proposal }
+  | { kind: "thread"; thread: ThreadSummary };
+
 interface Props {
-  idea: Idea | null;
-  selectedProposal: Proposal | null;
-  selectedThread: ThreadSummary | null;
+  selection: ReadingPaneSelection;
   activeWorkers: Map<string, Worker>;
   onWorkerClick: (workerId: number) => void;
-  selectedStudy: number | null;
-  scrollToAnnotationId: number | null;
-  onScrollToAnnotationHandled: () => void;
   onNavigate: (target: NavigationTarget) => void;
   onStartThread: (ideaSlug: string | null, initialTitle: string) => void;
   onClose: () => void;
 }
 
 export function ReadingPane({
-  idea,
-  selectedProposal,
-  selectedThread,
+  selection,
   activeWorkers,
   onWorkerClick,
-  selectedStudy,
-  scrollToAnnotationId,
-  onScrollToAnnotationHandled,
   onNavigate,
   onStartThread,
   onClose,
 }: Props) {
-  if (selectedThread) {
-    return (
-      <ThreadPane
-        thread={selectedThread}
-        activeWorkers={activeWorkers}
-        onWorkerClick={onWorkerClick}
-        onNavigate={onNavigate}
-        onClose={onClose}
-      />
-    );
-  }
+  switch (selection.kind) {
+    case "thread":
+      return (
+        <ThreadPane
+          thread={selection.thread}
+          activeWorkers={activeWorkers}
+          onWorkerClick={onWorkerClick}
+          onNavigate={onNavigate}
+          onClose={onClose}
+        />
+      );
 
-  if (selectedProposal) {
-    return (
-      <ProposalPane
-        proposal={selectedProposal}
-        onNavigate={onNavigate}
-        onClose={onClose}
-      />
-    );
-  }
+    case "proposal":
+      return (
+        <ProposalPane
+          proposal={selection.proposal}
+          onNavigate={onNavigate}
+          onClose={onClose}
+        />
+      );
 
-  if (!idea) {
-    return <EmptyReadingPane />;
-  }
+    case "empty":
+      return <EmptyReadingPane />;
 
-  if (selectedStudy) {
-    return (
-      <StudyPane
-        idea={idea}
-        selectedStudy={selectedStudy}
-        scrollToAnnotationId={scrollToAnnotationId}
-        onScrollToAnnotationHandled={onScrollToAnnotationHandled}
-        onNavigate={onNavigate}
-        onClose={onClose}
-      />
-    );
-  }
+    case "study":
+      return (
+        <StudyPane
+          idea={selection.idea}
+          selectedStudy={selection.selectedStudy}
+          scrollToAnnotationId={selection.scrollToAnnotationId}
+          onScrollToAnnotationHandled={selection.onScrollToAnnotationHandled}
+          onNavigate={onNavigate}
+          onClose={onClose}
+        />
+      );
 
-  return (
-    <IdeaPane
-      idea={idea}
-      activeWorkers={activeWorkers}
-      onWorkerClick={onWorkerClick}
-      onNavigate={onNavigate}
-      onStartThread={onStartThread}
-      onClose={onClose}
-    />
-  );
+    case "idea":
+      return (
+        <IdeaPane
+          idea={selection.idea}
+          activeWorkers={activeWorkers}
+          onWorkerClick={onWorkerClick}
+          onNavigate={onNavigate}
+          onStartThread={onStartThread}
+          onClose={onClose}
+        />
+      );
+  }
 }

@@ -18,18 +18,25 @@ export function IdeaDetailRoute() {
 
   return (
     <ReadingPane
-      idea={idea}
-      selectedProposal={null}
-      selectedThread={null}
+      selection={
+        idea == null
+          ? { kind: "empty" }
+          : selectedStudy != null
+            ? {
+                kind: "study",
+                idea,
+                selectedStudy,
+                scrollToAnnotationId,
+                onScrollToAnnotationHandled: () => {
+                  const next = new URLSearchParams(searchParams);
+                  next.delete("annotation");
+                  setSearchParams(next, { replace: true });
+                },
+              }
+            : { kind: "idea", idea }
+      }
       activeWorkers={context.activeWorkers}
       onWorkerClick={(workerId) => navigate(`/workers/${workerId}`)}
-      selectedStudy={selectedStudy}
-      scrollToAnnotationId={scrollToAnnotationId}
-      onScrollToAnnotationHandled={() => {
-        const next = new URLSearchParams(searchParams);
-        next.delete("annotation");
-        setSearchParams(next, { replace: true });
-      }}
       onNavigate={context.navigateToTarget}
       onStartThread={(ideaSlug, initialTitle) => context.openNewThread(ideaSlug, initialTitle)}
       onClose={() => navigate("/")}

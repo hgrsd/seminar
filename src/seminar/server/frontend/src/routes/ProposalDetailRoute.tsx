@@ -14,14 +14,9 @@ export function ProposalDetailRoute() {
 
   return (
     <ReadingPane
-      idea={null}
-      selectedProposal={proposal}
-      selectedThread={null}
+      selection={proposal == null ? { kind: "empty" } : { kind: "proposal", proposal }}
       activeWorkers={context.activeWorkers}
       onWorkerClick={(workerId) => navigate(`/workers/${workerId}`)}
-      selectedStudy={null}
-      scrollToAnnotationId={null}
-      onScrollToAnnotationHandled={() => {}}
       onNavigate={context.navigateToTarget}
       onStartThread={(ideaSlug, initialTitle) => context.openNewThread(ideaSlug, initialTitle)}
       onClose={() => navigate("/")}

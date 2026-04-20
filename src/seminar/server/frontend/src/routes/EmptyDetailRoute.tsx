@@ -8,14 +8,9 @@ export function EmptyDetailRoute() {
 
   return (
     <ReadingPane
-      idea={null}
-      selectedProposal={null}
-      selectedThread={null}
+      selection={{ kind: "empty" }}
       activeWorkers={context.activeWorkers}
       onWorkerClick={(workerId) => navigate(`/workers/${workerId}`)}
-      selectedStudy={null}
-      scrollToAnnotationId={null}
-      onScrollToAnnotationHandled={() => {}}
       onNavigate={context.navigateToTarget}
       onStartThread={(ideaSlug, initialTitle) => context.openNewThread(ideaSlug, initialTitle)}
       onClose={() => {}}
