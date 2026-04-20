@@ -2116,6 +2116,10 @@ textarea {
   margin-top: 20px;
 }
 
+.thread-composer .action-buttons {
+  justify-content: flex-end;
+}
+
 .thread-actions-divider {
   margin-top: 28px;
 }
