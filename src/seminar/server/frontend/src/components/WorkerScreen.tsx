@@ -77,7 +77,7 @@ function LogEvent({ event }: { event: WorkerLogEvent }) {
 
 /* ── Worker Card Grid ─────────────────────────────────── */
 
-const TYPE_ORDER: Worker["type"][] = ["initial_exploration", "follow_up_research", "connective_research"];
+const TYPE_ORDER: Worker["type"][] = ["initial_exploration", "follow_up_research", "connective_research", "thread_response"];
 
 function WorkerGrid({ workers, onSelect, titleFor }: { workers: Worker[]; onSelect: (w: Worker) => void; titleFor: (slug: string | null) => string | null }) {
   const [, setNow] = useState(Date.now());

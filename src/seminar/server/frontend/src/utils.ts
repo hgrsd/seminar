@@ -27,6 +27,7 @@ export const WORKER_TYPE_COLORS: Record<string, string> = {
   initial_exploration: "var(--amber)",
   follow_up_research: "var(--violet)",
   connective_research: "var(--accent)",
+  thread_response: "var(--accent-2, var(--accent))",
 };
 
 export const WORKER_TYPE_LABELS: Record<string, string> = {

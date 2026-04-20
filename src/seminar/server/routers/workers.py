@@ -4,6 +4,7 @@ import asyncio
 import logging
 from dataclasses import asdict
 from datetime import datetime, timezone
+from typing import Iterable
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import JSONResponse
@@ -11,8 +12,15 @@ from pydantic import BaseModel
 
 from seminar.config import Config
 from seminar.server.broadcast import BroadcastHub
+from seminar.server.dependencies import (
+    get_cfg,
+    get_hub,
+    get_pool,
+    get_run_service,
+    get_thread_runner,
+)
+from seminar.server.thread_responder import ThreadResponderRunner
 from seminar.service.runs import RunService
-from seminar.server.dependencies import get_cfg, get_hub, get_pool, get_run_service
 from seminar.workers import WorkerPool
 from seminar.workers.factory import (
     make_connective_research_worker,
@@ -29,8 +37,13 @@ class SpawnWorkerRequest(BaseModel):
     type: str
 
 
-def serialize_workers(pool: WorkerPool, provider: str) -> list[dict]:
-    return [serialize_worker(wid, ws, provider) for wid, ws in sorted(pool.states.items())]
+def serialize_workers(
+    pool: WorkerPool,
+    provider: str,
+    extra_states: Iterable[tuple[int, object]] = (),
+) -> list[dict]:
+    combined = [*pool.states.items(), *extra_states]
+    return [serialize_worker(wid, ws, provider) for wid, ws in sorted(combined)]
 
 
 def serialize_worker(worker_id: int, ws, provider: str) -> dict:
@@ -49,8 +62,9 @@ def serialize_worker(worker_id: int, ws, provider: str) -> dict:
 def get_workers(
     pool: WorkerPool = Depends(get_pool),
     cfg: Config = Depends(get_cfg),
+    runner: ThreadResponderRunner = Depends(get_thread_runner),
 ):
-    return serialize_workers(pool, cfg.provider)
+    return serialize_workers(pool, cfg.provider, runner.active_worker_states())
 
 
 @router.post("/workers")

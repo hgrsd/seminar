@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo, useCallback, isValidElement, type ReactNode, type ReactElement } from "react";
+import { useQuery } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
@@ -9,7 +10,9 @@ import {
   getIdeaSources,
 } from "../api/ideas";
 import { getProposalContent } from "../api/proposals";
-import type { Idea, StudyFile, Worker, Proposal, ThreadDetail, ThreadSummary, NavigationTarget, InitialExpectation } from "../types";
+import { getThread as getThreadDetail } from "../api/threads";
+import { queryKeys } from "../realtime/queryKeys";
+import type { Idea, StudyFile, Worker, Proposal, ThreadSummary, NavigationTarget, InitialExpectation } from "../types";
 import { useIdeas } from "../hooks/useIdeas";
 import { useProposals } from "../hooks/useProposals";
 import { useThreads } from "../hooks/useThreads";
@@ -176,7 +179,7 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
     deleteIdea,
   } = useIdeas();
   const { approveProposal, rejectProposal, deleteProposal } = useProposals();
-  const { threads, getThread, replyToThread, closeThread, deleteThread } = useThreads();
+  const { threads, replyToThread, closeThread, deleteThread } = useThreads();
   const [content, setContent] = useState<string | null>(null);
   const [title, setTitle] = useState<string | null>(null);
   const [meta, setMeta] = useState<Record<string, string> | null>(null);
@@ -186,8 +189,6 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
   const [confirmReject, setConfirmReject] = useState(false);
   const [confirmDeleteProposal, setConfirmDeleteProposal] = useState(false);
   const [confirmDeleteThread, setConfirmDeleteThread] = useState(false);
-  const [threadDetail, setThreadDetail] = useState<ThreadDetail | null>(null);
-  const [threadLoading, setThreadLoading] = useState(false);
   const [threadReply, setThreadReply] = useState("");
   const [threadAuthorName, setThreadAuthorName] = useState("");
   const [threadSubmitting, setThreadSubmitting] = useState(false);
@@ -207,6 +208,17 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
   const threadShouldScrollRef = useRef(false);
   const threadAtBottomRef = useRef(true);
   const pendingOwnReplyRef = useRef(false);
+  const threadDetailQuery = useQuery({
+    queryKey: selectedThread ? queryKeys.thread(selectedThread.id) : ["thread", "disabled"],
+    queryFn: ({ signal }) => {
+      if (!selectedThread) throw new Error("Thread detail requested without a selected thread");
+      return getThreadDetail(selectedThread.id, signal);
+    },
+    enabled: Boolean(selectedThread),
+    staleTime: Infinity,
+  });
+  const threadDetail = selectedThread ? (threadDetailQuery.data ?? null) : null;
+  const threadLoading = Boolean(selectedThread) && threadDetailQuery.isLoading;
 
   useEffect(() => {
     if (!confirmDelete && !confirmReset && !confirmDeleteProposal) return;
@@ -285,7 +297,6 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
 
   useEffect(() => {
     if (!selectedThread) {
-      setThreadDetail(null);
       prevThreadIdRef.current = null;
       prevThreadMessageCountRef.current = 0;
       threadShouldScrollRef.current = false;
@@ -297,20 +308,10 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
       prevThreadIdRef.current = selectedThread.id;
       prevThreadMessageCountRef.current = 0;
       threadShouldScrollRef.current = true;
-      setThreadDetail(null);
     } else if (scrollRef.current) {
       threadShouldScrollRef.current = threadAtBottomRef.current;
     }
-    setThreadLoading(true);
     setConfirmDeleteThread(false);
-    const controller = new AbortController();
-    getThread(selectedThread.id, controller.signal)
-      .then((data) => {
-        setThreadDetail(data);
-        setThreadLoading(false);
-      })
-      .catch(() => setThreadLoading(false));
-    return () => controller.abort();
   }, [selectedThread?.id, selectedThread?.updated_at]);
 
   useEffect(() => {

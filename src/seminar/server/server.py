@@ -139,7 +139,11 @@ async def lifespan(app: FastAPI):
 def _snapshot_payload(app: FastAPI) -> dict:
     return {
         "ideas": [asdict(s) for s in app.state.idea_service.status_all()],
-        "workers": workers.serialize_workers(app.state.pool, app.state.cfg.provider),
+        "workers": workers.serialize_workers(
+            app.state.pool,
+            app.state.cfg.provider,
+            app.state.thread_runner.active_worker_states(),
+        ),
         "activity": app.state.hub.activities,
         "study_counts": app.state.study_service.counts(),
         "proposals": [asdict(p) for p in app.state.proposal_service.list_all()],

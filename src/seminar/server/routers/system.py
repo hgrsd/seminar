@@ -14,7 +14,9 @@ from seminar.server.dependencies import (
     get_hub,
     get_pool,
     get_search_service,
+    get_thread_runner,
 )
+from seminar.server.thread_responder import ThreadResponderRunner
 from seminar.service.search import SearchService
 from seminar.workers import WorkerPool
 from seminar.workers.factory import (
@@ -104,7 +106,11 @@ def _snapshot_payload(request: Request) -> dict:
     app = request.app
     return {
         "ideas": [asdict(s) for s in app.state.idea_service.status_all()],
-        "workers": serialize_workers(app.state.pool, app.state.cfg.provider),
+        "workers": serialize_workers(
+            app.state.pool,
+            app.state.cfg.provider,
+            app.state.thread_runner.active_worker_states(),
+        ),
         "activity": app.state.hub.activities,
         "study_counts": app.state.study_service.counts(),
         "proposals": [asdict(p) for p in app.state.proposal_service.list_all()],

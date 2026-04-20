@@ -78,11 +78,6 @@ export function seedSnapshot(queryClient: QueryClient, snapshot: SnapshotState) 
   for (const proposal of snapshot.proposals) {
     queryClient.setQueryData(queryKeys.proposal(proposal.slug), proposal);
   }
-  for (const thread of snapshot.threads) {
-    queryClient.setQueryData(queryKeys.thread(thread.id), (current: ThreadDetail | ThreadSummary | undefined) =>
-      current && "messages" in current ? { ...current, ...thread } : thread,
-    );
-  }
   for (const worker of snapshot.workers) {
     queryClient.setQueryData(queryKeys.worker(worker.id), worker);
   }
@@ -135,8 +130,8 @@ export function applyWsMessage(
       queryClient.setQueryData(queryKeys.threads, (current: ThreadSummary[] | undefined) =>
         patchThreadSummary(current ?? [], message.data),
       );
-      queryClient.setQueryData(queryKeys.thread(message.data.id), (current: ThreadDetail | ThreadSummary | undefined) =>
-        current && "messages" in current ? patchThreadDetail(current, message.data) : message.data,
+      queryClient.setQueryData(queryKeys.thread(message.data.id), (current: ThreadDetail | undefined) =>
+        current ? patchThreadDetail(current, message.data) : current,
       );
       if (message.data.idea_slug) {
         queryClient.invalidateQueries({ queryKey: queryKeys.ideaThreads(message.data.idea_slug) });
@@ -149,8 +144,8 @@ export function applyWsMessage(
       queryClient.removeQueries({ queryKey: queryKeys.thread(message.data.id) });
       return;
     case "thread_message_added":
-      queryClient.setQueryData(queryKeys.thread(message.data.thread_id), (current: ThreadDetail | ThreadSummary | undefined) => {
-        if (!current || !("messages" in current)) return current;
+      queryClient.setQueryData(queryKeys.thread(message.data.thread_id), (current: ThreadDetail | undefined) => {
+        if (!current) return current;
         const alreadyPresent = current.messages.some((messageItem) => messageItem.id === message.data.id);
         if (alreadyPresent) return current;
         return { ...current, messages: [...current.messages, message.data] };

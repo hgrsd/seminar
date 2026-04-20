@@ -6,10 +6,12 @@ import asyncio
 import json
 import shlex
 from dataclasses import asdict
+from datetime import datetime, timezone
 from itertools import count
 
 from seminar.config import Config
 from seminar.server.broadcast import BroadcastHub
+from seminar.server.routers.workers import serialize_worker
 from seminar.service.ideas import IdeaService
 from seminar.service.runs import RunService, RunType
 from seminar.service.studies import StudyService
@@ -42,6 +44,10 @@ class ThreadResponderRunner:
         self.studies = studies
         self.hub = hub
         self._worker_ids = count(1_000_001)
+        self._active_states: dict[int, WorkerState] = {}
+
+    def active_worker_states(self) -> list[tuple[int, WorkerState]]:
+        return list(self._active_states.items())
 
     def available_responders(self) -> list[dict[str, str]]:
         return [{"id": THREAD_RESPONDER_ID, "label": THREAD_RESPONDER_LABEL}]
@@ -104,8 +110,17 @@ class ThreadResponderRunner:
             result = AgentResult()
             try:
                 state.status = WorkerStatus.RESEARCHING
+                state.current_slug = f"thread-{thread_id}"
+                state.started_at = asyncio.get_running_loop().time()
+                state.started_at_wall = datetime.now(timezone.utc).isoformat()
                 worker.logs_dir.mkdir(parents=True, exist_ok=True)
                 log_path = worker.logs_dir / worker.log_filename(worker_id, str(thread_id), None)
+                state.log_file = log_path
+                self._active_states[worker_id] = state
+                self.hub.publish_event(
+                    "worker_upserted",
+                    serialize_worker(worker_id, state, self.cfg.provider),
+                )
                 argv = [*shlex.split(worker.agent_cmd), prompt]
                 with open(log_path, "w") as log_fh:
                     proc = await default_spawn(
@@ -124,6 +139,8 @@ class ThreadResponderRunner:
                         result.exit_code = proc.returncode
                         result.timed_out = True
             finally:
+                self._active_states.pop(worker_id, None)
+                self.hub.publish_event("worker_removed", {"id": worker_id})
                 self.run_service.finish(
                     run_id,
                     exit_code=result.exit_code,

@@ -93,7 +93,7 @@ export interface Annotation {
 
 export interface Worker {
   id: number;
-  type: "initial_exploration" | "follow_up_research" | "connective_research";
+  type: "initial_exploration" | "follow_up_research" | "connective_research" | "thread_response";
   provider: string;
   status: "idle" | "researching";
   current_slug: string | null;
