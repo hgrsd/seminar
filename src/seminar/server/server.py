@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from seminar import config, db, providers, service
@@ -35,6 +36,16 @@ log = logging.getLogger(__name__)
 
 LOCK_PATH = Path.home() / ".seminar" / "seminar.lock"
 FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
+
+
+class SPAStaticFiles(StaticFiles):
+    """Serve index.html for frontend routes while preserving asset 404s."""
+
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        if response.status_code != 404 or "." in Path(path).name:
+            return response
+        return FileResponse(Path(self.directory) / "index.html")
 
 
 def _acquire_file_lock():
@@ -179,7 +190,7 @@ async def websocket_endpoint(ws: WebSocket):
 
 
 if FRONTEND_DIST.exists():
-    app.mount("/", StaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+    app.mount("/", SPAStaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
 
 
 def run(port: int = 8765, headless: bool = False) -> None:

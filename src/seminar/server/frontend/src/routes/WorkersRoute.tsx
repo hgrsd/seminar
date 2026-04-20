@@ -15,6 +15,8 @@ function WorkerScreenRoute({ initialWorkerId }: { initialWorkerId: number | null
       threads={context.threads}
       initialWorkerId={initialWorkerId}
       onClose={() => navigate("/")}
+      onOpenWorker={(workerId) => navigate(`/workers/${workerId}`)}
+      onBackToWorkers={() => navigate("/workers")}
       onNavigate={context.navigateToTarget}
       onDismissWorker={(workerId) => {
         void removeWorker(workerId);

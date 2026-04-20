@@ -10,6 +10,8 @@ interface Props {
   threads: ThreadSummary[];
   initialWorkerId: number | null;
   onClose: () => void;
+  onOpenWorker: (workerId: number) => void;
+  onBackToWorkers: () => void;
   onNavigate: (target: NavigationTarget) => void;
   onDismissWorker: (workerId: number) => void;
   onKillTask: (workerId: number) => void;
@@ -583,9 +585,19 @@ function GlobalHistory({
 
 type Tab = "workers" | "history";
 
-export function WorkerScreen({ workers, ideas, threads, initialWorkerId, onClose, onNavigate, onDismissWorker, onKillTask }: Props) {
+export function WorkerScreen({
+  workers,
+  ideas,
+  threads,
+  initialWorkerId,
+  onClose,
+  onOpenWorker,
+  onBackToWorkers,
+  onNavigate,
+  onDismissWorker,
+  onKillTask,
+}: Props) {
   const [tab, setTab] = useState<Tab>("workers");
-  const [selectedId, setSelectedId] = useState<number | null>(initialWorkerId);
   const [historyRun, setHistoryRun] = useState<RunEntry | null>(null);
 
   const titleBySlug = Object.fromEntries(ideas.map((i) => [i.slug, i.title]));
@@ -594,14 +606,11 @@ export function WorkerScreen({ workers, ideas, threads, initialWorkerId, onClose
   const threadTitleFor = (threadId: number) => titleById[threadId] ?? null;
 
   useEffect(() => {
-    if (initialWorkerId != null) {
-      setSelectedId(initialWorkerId);
-      setTab("workers");
-    }
+    if (initialWorkerId != null) setTab("workers");
   }, [initialWorkerId]);
 
-  const selectedWorker = selectedId != null
-    ? workers.find((w) => w.id === selectedId) ?? null
+  const selectedWorker = initialWorkerId != null
+    ? workers.find((w) => w.id === initialWorkerId) ?? null
     : null;
 
   // Drilling into a specific log file
@@ -633,7 +642,7 @@ export function WorkerScreen({ workers, ideas, threads, initialWorkerId, onClose
           <div className="reading-pane-content">
             <WorkerDetail
               worker={selectedWorker}
-              onBack={() => setSelectedId(null)}
+              onBack={onBackToWorkers}
               onNavigate={onNavigate}
               onDismissWorker={onDismissWorker}
               onKillTask={onKillTask}
@@ -669,13 +678,16 @@ export function WorkerScreen({ workers, ideas, threads, initialWorkerId, onClose
             </div>
           </div>
           {tab === "workers" ? (
-            <WorkerGrid workers={workers} onSelect={(w) => setSelectedId(w.id)} titleFor={titleFor} />
+            <WorkerGrid workers={workers} onSelect={(w) => onOpenWorker(w.id)} titleFor={titleFor} />
           ) : (
             <GlobalHistory
               workers={workers}
               onNavigate={onNavigate}
               onViewLog={(run) => setHistoryRun(run)}
-              onGoToWorker={(workerId) => { setSelectedId(workerId); setTab("workers"); }}
+              onGoToWorker={(workerId) => {
+                onOpenWorker(workerId);
+                setTab("workers");
+              }}
               titleFor={titleFor}
               threadTitleFor={threadTitleFor}
             />
