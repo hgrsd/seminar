@@ -30,8 +30,6 @@ export function IdeaDetailRoute() {
         next.delete("annotation");
         setSearchParams(next, { replace: true });
       }}
-      studiesCache={context.studiesCache}
-      fetchStudies={context.fetchStudies}
       onNavigate={context.navigateToTarget}
       onStartThread={(ideaSlug, initialTitle) => context.openNewThread(ideaSlug, initialTitle)}
       onClose={() => navigate("/")}

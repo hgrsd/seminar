@@ -16,8 +16,6 @@ export function EmptyDetailRoute() {
       selectedStudy={null}
       scrollToAnnotationId={null}
       onScrollToAnnotationHandled={() => {}}
-      studiesCache={context.studiesCache}
-      fetchStudies={context.fetchStudies}
       onNavigate={context.navigateToTarget}
       onStartThread={(ideaSlug, initialTitle) => context.openNewThread(ideaSlug, initialTitle)}
       onClose={() => {}}
