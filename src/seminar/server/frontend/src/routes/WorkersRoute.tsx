@@ -1,18 +1,22 @@
 import { useNavigate, useOutletContext, useParams } from "react-router-dom";
 import { WorkerScreen } from "../components/WorkerScreen";
+import { useIdeas } from "../hooks/useIdeas";
+import { useThreads } from "../hooks/useThreads";
 import { useWorkers } from "../hooks/useWorkers";
 import type { AppLayoutContext } from "./AppLayout";
 
 function WorkerScreenRoute({ initialWorkerId }: { initialWorkerId: number | null }) {
   const navigate = useNavigate();
+  const { ideas } = useIdeas();
+  const { threads } = useThreads();
+  const { workers, removeWorker, killWorkerTask } = useWorkers();
   const context = useOutletContext<AppLayoutContext>();
-  const { removeWorker, killWorkerTask } = useWorkers();
 
   return (
     <WorkerScreen
-      workers={context.workers}
-      ideas={context.ideas}
-      threads={context.threads}
+      workers={workers}
+      ideas={ideas}
+      threads={threads}
       initialWorkerId={initialWorkerId}
       onClose={() => navigate("/")}
       onOpenWorker={(workerId) => navigate(`/workers/${workerId}`)}

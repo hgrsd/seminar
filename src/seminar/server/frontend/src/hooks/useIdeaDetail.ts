@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getIdeaChildren,
   getIdeaContent,
@@ -7,12 +7,24 @@ import {
   getIdeaSources,
   getIdeaStudies,
 } from "../api/ideas";
-import { useIdeas } from "./useIdeas";
 import { queryKeys } from "../realtime/queryKeys";
+import { snapshotQueryOptions } from "./useSeminarStore";
+
+function useStudyCounts() {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: queryKeys.studyCounts,
+    queryFn: async () => {
+      const snapshot = await queryClient.ensureQueryData(snapshotQueryOptions(queryClient));
+      return snapshot.study_counts;
+    },
+    staleTime: Infinity,
+  });
+}
 
 export function useIdeaDetail(slug: string | null | undefined) {
   const queryClient = useQueryClient();
-  const { studyCounts } = useIdeas();
+  const studyCountsQuery = useStudyCounts();
   const prevStudyCountRef = useRef<number | null>(null);
   const enabled = Boolean(slug);
 
@@ -71,12 +83,13 @@ export function useIdeaDetail(slug: string | null | undefined) {
       prevStudyCountRef.current = null;
       return;
     }
+    const studyCounts = studyCountsQuery.data ?? {};
     const nextCount = studyCounts[slug] ?? 0;
     if (prevStudyCountRef.current != null && prevStudyCountRef.current !== nextCount) {
       void queryClient.invalidateQueries({ queryKey: queryKeys.ideaStudies(slug) });
     }
     prevStudyCountRef.current = nextCount;
-  }, [queryClient, slug, studyCounts]);
+  }, [queryClient, slug, studyCountsQuery.data]);
 
   return {
     content: contentQuery.data?.content ?? null,

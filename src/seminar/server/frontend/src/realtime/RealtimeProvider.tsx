@@ -7,10 +7,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { getSnapshot } from "../api/system";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ActivityEvent, WSMessage } from "../types";
 import { applyWsMessage, seedSnapshot } from "./applyWsMessage";
+import { snapshotQueryOptions } from "../hooks/useSeminarStore";
 
 interface RealtimeContextValue {
   activity: ActivityEvent[];
@@ -29,27 +29,24 @@ export function RealtimeProvider({ children }: { children: ReactNode }) {
   const [sessionCost, setSessionCost] = useState(0);
   const mountedRef = useRef(true);
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const snapshotQuery = useQuery(snapshotQueryOptions(queryClient));
 
   useEffect(() => {
     mountedRef.current = true;
-    const controller = new AbortController();
-
-    async function loadSnapshot() {
-      const snapshot = await getSnapshot(controller.signal);
-      seedSnapshot(queryClient, snapshot);
-      setActivity(snapshot.activity);
-      setPaused(snapshot.paused);
-      setSessionCost(snapshot.session_cost);
-    }
-
-    void loadSnapshot().catch(() => {});
-
     return () => {
       mountedRef.current = false;
-      controller.abort();
       if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     };
-  }, [queryClient]);
+  }, []);
+
+  useEffect(() => {
+    const snapshot = snapshotQuery.data;
+    if (!snapshot) return;
+    seedSnapshot(queryClient, snapshot);
+    setActivity(snapshot.activity);
+    setPaused(snapshot.paused);
+    setSessionCost(snapshot.session_cost);
+  }, [queryClient, snapshotQuery.data]);
 
   useEffect(() => {
     let socket: WebSocket | null = null;

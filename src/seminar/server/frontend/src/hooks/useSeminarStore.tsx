@@ -1,10 +1,10 @@
 import { type ReactNode, useMemo } from "react";
 import {
   useMutation,
-  useQuery,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
-import { RealtimeProvider, useRealtimeState } from "../realtime/RealtimeProvider";
+import { RealtimeProvider } from "../realtime/RealtimeProvider";
 import { seedSnapshot } from "../realtime/applyWsMessage";
 import { queryKeys } from "../realtime/queryKeys";
 import * as ideasApi from "../api/ideas";
@@ -12,15 +12,14 @@ import * as proposalsApi from "../api/proposals";
 import * as threadsApi from "../api/threads";
 import * as workersApi from "../api/workers";
 import * as systemApi from "../api/system";
-import type { Idea, Proposal, Responder, Settings, ThreadSummary, Worker } from "../types";
+import type { Settings } from "../types";
 
 export function SeminarProvider({ children }: { children: ReactNode }) {
   return <RealtimeProvider>{children}</RealtimeProvider>;
 }
 
-function useSeededSnapshotQuery() {
-  const queryClient = useQueryClient();
-  return useQuery({
+export function snapshotQueryOptions(queryClient: QueryClient) {
+  return {
     queryKey: queryKeys.snapshot,
     queryFn: async () => {
       const snapshot = await systemApi.getSnapshot();
@@ -28,44 +27,7 @@ function useSeededSnapshotQuery() {
       return snapshot;
     },
     staleTime: Infinity,
-  });
-}
-
-export function useSeminarState() {
-  const queryClient = useQueryClient();
-  const snapshotQuery = useSeededSnapshotQuery();
-  const realtime = useRealtimeState();
-  const snapshot = snapshotQuery.data;
-  const ideas = queryClient.getQueryData<Idea[]>(queryKeys.ideas) ?? snapshot?.ideas ?? [];
-  const workers = queryClient.getQueryData<Worker[]>(queryKeys.workers) ?? snapshot?.workers ?? [];
-  const studyCounts = queryClient.getQueryData<Record<string, number>>(queryKeys.studyCounts) ?? snapshot?.study_counts ?? {};
-  const proposals = queryClient.getQueryData<Proposal[]>(queryKeys.proposals) ?? snapshot?.proposals ?? [];
-  const threads = queryClient.getQueryData<ThreadSummary[]>(queryKeys.threads) ?? snapshot?.threads ?? [];
-  const responders = queryClient.getQueryData<Responder[]>(queryKeys.responders) ?? snapshot?.responders ?? [];
-
-  return useMemo(() => ({
-    ideas,
-    workers,
-    activity: realtime.activity,
-    studyCounts,
-    proposals,
-    threads,
-    responders,
-    paused: realtime.paused,
-    sessionCost: realtime.sessionCost,
-    connected: realtime.connected,
-  }), [
-    ideas,
-    realtime.activity,
-    realtime.connected,
-    realtime.paused,
-    realtime.sessionCost,
-    proposals,
-    responders,
-    studyCounts,
-    threads,
-    workers,
-  ]);
+  } as const;
 }
 
 export function useSeminarActions() {

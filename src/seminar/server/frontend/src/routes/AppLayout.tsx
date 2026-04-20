@@ -13,18 +13,10 @@ import { useWorkers } from "../hooks/useWorkers";
 import { useSystemState } from "../hooks/useSystemState";
 import { useActivity } from "../hooks/useActivity";
 import { useActiveWorkers } from "../hooks/useActiveWorkers";
-import { useStudies } from "../hooks/useStudies";
-import type { Idea, NavigationTarget, Proposal, StudyFile, ThreadSummary, Worker } from "../types";
+import type { NavigationTarget } from "../types";
 import "../App.css";
 
 export interface AppLayoutContext {
-  ideas: Idea[];
-  proposals: Proposal[];
-  threads: ThreadSummary[];
-  workers: Worker[];
-  activeWorkers: Map<string, Worker>;
-  studiesCache: Record<string, StudyFile[]>;
-  fetchStudies: (slug: string) => void;
   openNewThread: (ideaSlug?: string | null, initialTitle?: string) => void;
   navigateToTarget: (target: NavigationTarget) => void;
 }
@@ -102,7 +94,6 @@ export function AppLayout() {
   const { workers, spawnWorker } = useWorkers();
   const { paused, sessionCost, pause, resume } = useSystemState();
   const { activity } = useActivity();
-  const { studiesCache, fetchStudies } = useStudies(studyCounts);
   const activeWorkers = useActiveWorkers(workers);
   const [showNewIdea, setShowNewIdea] = useState(false);
   const [showNewThread, setShowNewThread] = useState(false);
@@ -151,17 +142,10 @@ export function AppLayout() {
 
   const context = useMemo<AppLayoutContext>(
     () => ({
-      ideas,
-      proposals,
-      threads,
-      workers,
-      activeWorkers,
-      studiesCache,
-      fetchStudies,
       openNewThread,
       navigateToTarget,
     }),
-    [activeWorkers, fetchStudies, ideas, navigateToTarget, openNewThread, proposals, studiesCache, threads, workers],
+    [navigateToTarget, openNewThread],
   );
 
   return (
@@ -193,8 +177,6 @@ export function AppLayout() {
             selectedProposal={selection.selectedProposal}
             selectedThread={selection.selectedThread}
             studyCounts={studyCounts}
-            studiesCache={studiesCache}
-            fetchStudies={fetchStudies}
             onNavigate={navigateToTarget}
             onCollapse={() => setSidebarOpen(false)}
           />

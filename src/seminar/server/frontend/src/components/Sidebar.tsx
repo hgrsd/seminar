@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Idea, Worker, StudyFile, Proposal, ThreadSummary, NavigationTarget } from "../types";
+import type { Idea, Worker, Proposal, ThreadSummary, NavigationTarget } from "../types";
 import { stateGroup, WORKER_TYPE_COLORS } from "../utils";
+import { useStudies } from "../hooks/useStudies";
 
 interface Props {
   ideas: Idea[];
@@ -12,8 +13,6 @@ interface Props {
   selectedProposal: string | null;
   selectedThread: number | null;
   studyCounts: Record<string, number>;
-  studiesCache: Record<string, StudyFile[]>;
-  fetchStudies: (slug: string) => void;
   onNavigate: (target: NavigationTarget) => void;
   onCollapse: () => void;
 }
@@ -145,11 +144,10 @@ export function Sidebar({
   selectedProposal,
   selectedThread,
   studyCounts,
-  studiesCache,
-  fetchStudies,
   onNavigate,
   onCollapse,
 }: Props) {
+  const { studiesCache, fetchStudies } = useStudies(studyCounts);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({
     threads_open: false,
     threads_closed: true,
