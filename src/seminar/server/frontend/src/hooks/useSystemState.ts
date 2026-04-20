@@ -1,7 +1,8 @@
-import { useSeminarActions, useSeminarState } from "./useSeminarStore";
+import { useRealtimeState } from "../realtime/RealtimeProvider";
+import { useSeminarActions } from "./useSeminarStore";
 
 export function useSystemState() {
-  const { paused, sessionCost, connected } = useSeminarState();
+  const { paused, sessionCost, connected } = useRealtimeState();
   const { pause, resume, getSettings, updateSettings, getProviderDefaults } = useSeminarActions();
 
   return {

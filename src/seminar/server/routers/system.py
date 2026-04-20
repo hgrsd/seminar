@@ -1,5 +1,6 @@
-"""System endpoints: pause/resume, search, and runtime settings."""
+"""System endpoints: snapshot, pause/resume, search, and runtime settings."""
 
+from dataclasses import asdict
 from dataclasses import replace
 
 from fastapi import APIRouter, Depends, Request
@@ -8,7 +9,12 @@ from pydantic import BaseModel, Field
 from seminar import config, providers, service
 from seminar.config import Config, IntervalsConfig, TimeoutsConfig, WorkersConfig
 from seminar.server.broadcast import BroadcastHub
-from seminar.server.dependencies import get_cfg, get_hub, get_pool, get_search_service
+from seminar.server.dependencies import (
+    get_cfg,
+    get_hub,
+    get_pool,
+    get_search_service,
+)
 from seminar.service.search import SearchService
 from seminar.workers import WorkerPool
 from seminar.workers.factory import (
@@ -16,6 +22,7 @@ from seminar.workers.factory import (
     make_follow_up_worker,
     make_initial_exploration_worker,
 )
+from seminar.server.routers.workers import serialize_workers
 
 router = APIRouter(prefix="/api")
 
@@ -91,6 +98,26 @@ def _apply_runtime_settings(request: Request, cfg: Config) -> None:
         template = worker_factories[worker_type]()
         _copy_worker_settings(state.worker_type, template)
     app.state.pool.wake()
+
+
+def _snapshot_payload(request: Request) -> dict:
+    app = request.app
+    return {
+        "ideas": [asdict(s) for s in app.state.idea_service.status_all()],
+        "workers": serialize_workers(app.state.pool, app.state.cfg.provider),
+        "activity": app.state.hub.activities,
+        "study_counts": app.state.study_service.counts(),
+        "proposals": [asdict(p) for p in app.state.proposal_service.list_all()],
+        "threads": [asdict(t) for t in app.state.thread_service.list_all()],
+        "paused": service.is_paused(),
+        "session_cost": app.state.run_service.session_cost(app.state.started_at),
+        "responders": app.state.thread_runner.available_responders(),
+    }
+
+
+@router.get("/snapshot")
+def get_snapshot(request: Request):
+    return _snapshot_payload(request)
 
 
 @router.get("/providers")

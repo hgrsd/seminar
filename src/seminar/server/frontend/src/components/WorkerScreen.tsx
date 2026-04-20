@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { format, addDays, parseISO, isToday, isYesterday } from "date-fns";
+import { getWorkerHistory, getWorkerRuns } from "../api/workers";
 import type { Idea, ThreadSummary, Worker, WorkerLogEvent, RunEntry, NavigationTarget } from "../types";
 import { workerTypeLabel } from "../utils";
 
@@ -199,8 +200,7 @@ function WorkerDetail({
     let cancelled = false;
     const filename = worker.log_file.split("/").pop()!;
     const fetchLog = () => {
-      fetch(`/api/workers/${worker.id}/history/${filename}`)
-        .then((r) => r.json())
+      getWorkerHistory(worker.id, filename)
         .then((data: { events: WorkerLogEvent[] }) => {
           if (!cancelled) {
             setEvents(data.events || []);
@@ -303,8 +303,7 @@ function HistoryLogView({
 
   useEffect(() => {
     if (!filename) { setLoading(false); return; }
-    fetch(`/api/workers/${run.worker_id}/history/${filename}`)
-      .then((r) => r.json())
+    getWorkerHistory(run.worker_id, filename)
       .then((data: { events: WorkerLogEvent[] }) => {
         setEvents(data.events || []);
         setLoading(false);
@@ -460,8 +459,7 @@ function GlobalHistory({
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/workers/runs?date=${date}`)
-      .then((r) => r.json())
+    getWorkerRuns(date)
       .then((data: { runs: RunEntry[] }) => {
         setRuns(data.runs || []);
         setLoading(false);

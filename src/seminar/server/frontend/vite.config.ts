@@ -14,5 +14,13 @@ export default defineConfig({
   },
   build: {
     outDir: "dist",
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ["react", "react-dom", "react-router-dom", "@tanstack/react-query"],
+          markdown: ["react-markdown", "remark-gfm"],
+        },
+      },
+    },
   },
 });

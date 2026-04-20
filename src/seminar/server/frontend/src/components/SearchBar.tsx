@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { search } from "../api/system";
 import type { NavigationTarget } from "../types";
 
 interface SearchResult {
@@ -52,8 +53,7 @@ export function SearchModal({ open, onClose, onNavigate }: Props) {
       return;
     }
     setLoading(true);
-    fetch(`/api/search?q=${encodeURIComponent(q)}`)
-      .then((r) => r.json())
+    search(q)
       .then((data: SearchResult[]) => {
         setResults(data);
         setLoading(false);

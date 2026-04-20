@@ -1,6 +1,14 @@
 import { useState, useEffect, useRef, useMemo, useCallback, isValidElement, type ReactNode, type ReactElement } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  exportIdea,
+  getIdeaChildren,
+  getIdeaContent,
+  getIdeaInitialExpectation,
+  getIdeaSources,
+} from "../api/ideas";
+import { getProposalContent } from "../api/proposals";
 import type { Idea, StudyFile, Worker, Proposal, ThreadDetail, ThreadSummary, NavigationTarget, InitialExpectation } from "../types";
 import { useIdeas } from "../hooks/useIdeas";
 import { useProposals } from "../hooks/useProposals";
@@ -125,6 +133,10 @@ function TableOfContents({ entries, scrollRef }: { entries: TocEntry[]; scrollRe
   );
 }
 
+function isNearBottom(element: HTMLDivElement, threshold = 80): boolean {
+  return element.scrollHeight - element.scrollTop - element.clientHeight <= threshold;
+}
+
 interface Props {
   idea: Idea | null;
   selectedProposal: Proposal | null;
@@ -190,6 +202,11 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
   const deleteProposalBtnRef = useRef<HTMLButtonElement>(null);
   const resetBtnRef = useRef<HTMLButtonElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prevThreadIdRef = useRef<number | null>(null);
+  const prevThreadMessageCountRef = useRef(0);
+  const threadShouldScrollRef = useRef(false);
+  const threadAtBottomRef = useRef(true);
+  const pendingOwnReplyRef = useRef(false);
 
   useEffect(() => {
     if (!confirmDelete && !confirmReset && !confirmDeleteProposal) return;
@@ -228,19 +245,13 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
     setConfirmReset(false);
     fetchStudies(idea.slug);
 
-    fetch(`/api/ideas/${idea.slug}/sources`).then((r) => r.json()).then(setSources).catch(() => {});
-    fetch(`/api/ideas/${idea.slug}/children`).then((r) => r.json()).then(setChildren).catch(() => {});
-    fetch(`/api/ideas/${idea.slug}/initial-expectation`)
-      .then(async (r) => {
-        if (r.status === 404) return null;
-        if (!r.ok) throw new Error(`Initial expectation request failed with status ${r.status}`);
-        return (await r.json()) as InitialExpectation;
-      })
+    getIdeaSources(idea.slug).then(setSources).catch(() => {});
+    getIdeaChildren(idea.slug).then(setChildren).catch(() => {});
+    getIdeaInitialExpectation(idea.slug)
       .then((value) => setInitialExpectation(value))
       .catch(() => {});
 
-    fetch(`/api/ideas/${idea.slug}/content`)
-      .then((r) => r.json())
+    getIdeaContent(idea.slug)
       .then((ideaContent) => {
         if (ideaContent) {
           setContent(ideaContent.content);
@@ -263,8 +274,7 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
     setProposalMeta(null);
     setConfirmReject(false);
     setConfirmDeleteProposal(false);
-    fetch(`/api/proposals/${selectedProposal.slug}/content`)
-      .then((r) => r.json())
+    getProposalContent(selectedProposal.slug)
       .then((data) => {
         setProposalContent(data.content ?? null);
         setProposalMeta(data.meta ?? null);
@@ -276,10 +286,22 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
   useEffect(() => {
     if (!selectedThread) {
       setThreadDetail(null);
+      prevThreadIdRef.current = null;
+      prevThreadMessageCountRef.current = 0;
+      threadShouldScrollRef.current = false;
+      pendingOwnReplyRef.current = false;
       return;
     }
+    const isNewThread = prevThreadIdRef.current !== selectedThread.id;
+    if (isNewThread) {
+      prevThreadIdRef.current = selectedThread.id;
+      prevThreadMessageCountRef.current = 0;
+      threadShouldScrollRef.current = true;
+      setThreadDetail(null);
+    } else if (scrollRef.current) {
+      threadShouldScrollRef.current = threadAtBottomRef.current;
+    }
     setThreadLoading(true);
-    setThreadDetail(null);
     setConfirmDeleteThread(false);
     const controller = new AbortController();
     getThread(selectedThread.id, controller.signal)
@@ -289,11 +311,49 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
       })
       .catch(() => setThreadLoading(false));
     return () => controller.abort();
-  }, [getThread, selectedThread?.id, selectedThread?.updated_at]);
+  }, [selectedThread?.id, selectedThread?.updated_at]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo(0, 0);
   }, [selectedStudy]);
+
+  useEffect(() => {
+    if (!selectedThread || !scrollRef.current) return;
+
+    const element = scrollRef.current;
+    const updateScrollState = () => {
+      threadAtBottomRef.current = isNearBottom(element);
+    };
+
+    updateScrollState();
+    element.addEventListener("scroll", updateScrollState);
+    return () => element.removeEventListener("scroll", updateScrollState);
+  }, [selectedThread?.id]);
+
+  useEffect(() => {
+    if (!selectedThread || !threadDetail || !scrollRef.current) return;
+
+    const nextCount = threadDetail.messages.length;
+    const previousCount = prevThreadMessageCountRef.current;
+    const grew = nextCount > previousCount;
+    const shouldScroll =
+      threadShouldScrollRef.current ||
+      pendingOwnReplyRef.current ||
+      (grew && threadAtBottomRef.current);
+
+    prevThreadMessageCountRef.current = nextCount;
+
+    if (!shouldScroll) return;
+
+    requestAnimationFrame(() => {
+      const element = scrollRef.current;
+      if (!element) return;
+      element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
+      threadAtBottomRef.current = true;
+      threadShouldScrollRef.current = false;
+      pendingOwnReplyRef.current = false;
+    });
+  }, [selectedThread?.id, threadDetail]);
 
   const studies = idea ? (studiesCache[idea.slug] ?? []) : [];
 
@@ -348,6 +408,7 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
     const handleReply = async () => {
       if (!threadReply.trim() || !threadAuthorName.trim()) return;
       setThreadSubmitting(true);
+      pendingOwnReplyRef.current = true;
       try {
         await replyToThread(selectedThread.id, {
           body: threadReply,
@@ -758,12 +819,9 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
 
   const handleExport = () => {
     setExporting(true);
-    fetch(`/api/ideas/${idea.slug}/export`)
-      .then(async (response) => {
-        if (!response.ok) {
-          throw new Error(`Export failed with status ${response.status}`);
-        }
-        const blob = await response.blob();
+    exportIdea(idea.slug)
+      .then(async (markdown) => {
+        const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;

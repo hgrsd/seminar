@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  createAnnotation as createStudyAnnotation,
+  deleteAnnotation as deleteStudyAnnotation,
+  listAnnotations,
+  updateAnnotation as updateStudyAnnotation,
+} from "../api/annotations";
+import { queryKeys } from "../realtime/queryKeys";
 import type { Annotation } from "../types";
 
 /**
@@ -213,26 +221,52 @@ export function useStudyAnnotations(
   scrollToAnnotationId: number | null = null,
   onScrollToAnnotationHandled?: () => void,
 ) {
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [annotationLoading, setAnnotationLoading] = useState(false);
+  const queryClient = useQueryClient();
   const [annotationBody, setAnnotationBody] = useState("");
   const [annotationPopover, setAnnotationPopover] = useState<AnnotationPopoverState | null>(null);
   const studyProseRef = useRef<HTMLDivElement>(null);
+
+  const annotationsQuery = useQuery({
+    queryKey: ideaSlug && selectedStudy ? queryKeys.studyAnnotations(ideaSlug, selectedStudy) : ["study-annotations", "disabled"],
+    queryFn: ({ signal }) => {
+      if (!ideaSlug || !selectedStudy) return Promise.resolve([] as Annotation[]);
+      return listAnnotations(ideaSlug, selectedStudy, signal);
+    },
+    enabled: Boolean(ideaSlug && selectedStudy),
+    staleTime: Infinity,
+  });
+
+  const annotations = annotationsQuery.data ?? [];
+  const annotationLoading = annotationsQuery.isLoading;
+
+  const createMutation = useMutation({
+    mutationFn: (input: {
+      ideaSlug: string;
+      selectedStudy: number;
+      payload: {
+        rendered_text_start_offset: number;
+        rendered_text_end_offset: number;
+        rendered_text: string;
+        body: string;
+      };
+    }) => createStudyAnnotation(input.ideaSlug, input.selectedStudy, input.payload),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ annotationId, body }: { annotationId: number; body: string }) =>
+      updateStudyAnnotation(annotationId, body),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (annotationId: number) => deleteStudyAnnotation(annotationId),
+  });
 
   useEffect(() => {
     setAnnotationPopover(null);
     setAnnotationBody("");
     if (!ideaSlug || !selectedStudy) {
-      setAnnotations([]);
-      setAnnotationLoading(false);
       return;
     }
-    setAnnotationLoading(true);
-    fetch(`/api/ideas/${ideaSlug}/studies/${selectedStudy}/annotations`)
-      .then((r) => r.json())
-      .then((data: Annotation[]) => setAnnotations(data))
-      .catch(() => setAnnotations([]))
-      .finally(() => setAnnotationLoading(false));
   }, [ideaSlug, selectedStudy]);
 
   useEffect(() => {
@@ -485,38 +519,38 @@ export function useStudyAnnotations(
 
   const createAnnotation = useCallback(async () => {
     if (!ideaSlug || !selectedStudy || annotationPopover?.mode !== "create" || !annotationPopover.draft) return;
-    const response = await fetch(`/api/ideas/${ideaSlug}/studies/${selectedStudy}/annotations`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
+    const data = await createMutation.mutateAsync({
+      ideaSlug,
+      selectedStudy,
+      payload: {
         rendered_text_start_offset: annotationPopover.draft.rendered_text_start_offset,
         rendered_text_end_offset: annotationPopover.draft.rendered_text_end_offset,
         rendered_text: annotationPopover.draft.rendered_text,
         body: annotationBody,
-      }),
+      },
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `Request failed: ${response.status}`);
-    setAnnotations((current) => [...current, data as Annotation].sort(
-      (a, b) => a.rendered_text_start_offset - b.rendered_text_start_offset,
-    ));
+    queryClient.setQueryData(
+      queryKeys.studyAnnotations(ideaSlug, selectedStudy),
+      (current: Annotation[] | undefined) =>
+        [...(current ?? []), data].sort(
+          (a, b) => a.rendered_text_start_offset - b.rendered_text_start_offset,
+        ),
+    );
     setAnnotationPopover(null);
     setAnnotationBody("");
     window.getSelection()?.removeAllRanges();
-  }, [annotationBody, annotationPopover, ideaSlug, selectedStudy]);
+  }, [annotationBody, annotationPopover, createMutation, ideaSlug, queryClient, selectedStudy]);
 
   const updateAnnotation = useCallback(async () => {
     if (!activeAnnotation || annotationPopover?.mode !== "edit") return;
-    const response = await fetch(`/api/annotations/${activeAnnotation.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ body: annotationBody }),
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || `Request failed: ${response.status}`);
-    setAnnotations((current) =>
-      current.map((item) => (item.id === activeAnnotation.id ? data as Annotation : item)),
-    );
+    const data = await updateMutation.mutateAsync({ annotationId: activeAnnotation.id, body: annotationBody });
+    if (ideaSlug && selectedStudy) {
+      queryClient.setQueryData(
+        queryKeys.studyAnnotations(ideaSlug, selectedStudy),
+        (current: Annotation[] | undefined) =>
+          (current ?? []).map((item) => (item.id === activeAnnotation.id ? data : item)),
+      );
+    }
     setAnnotationPopover({
       mode: "view",
       x: annotationPopover.x,
@@ -525,21 +559,21 @@ export function useStudyAnnotations(
       annotation: data as Annotation,
     });
     setAnnotationBody((data as Annotation).body);
-  }, [activeAnnotation, annotationBody, annotationPopover]);
+  }, [activeAnnotation, annotationBody, annotationPopover, ideaSlug, queryClient, selectedStudy, updateMutation]);
 
   const deleteAnnotation = useCallback(async () => {
     if (!activeAnnotation) return;
-    const response = await fetch(`/api/annotations/${activeAnnotation.id}`, {
-      method: "DELETE",
-    });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.error || `Request failed: ${response.status}`);
+    await deleteMutation.mutateAsync(activeAnnotation.id);
+    if (ideaSlug && selectedStudy) {
+      queryClient.setQueryData(
+        queryKeys.studyAnnotations(ideaSlug, selectedStudy),
+        (current: Annotation[] | undefined) =>
+          (current ?? []).filter((item) => item.id !== activeAnnotation.id),
+      );
     }
-    setAnnotations((current) => current.filter((item) => item.id !== activeAnnotation.id));
     setAnnotationPopover(null);
     setAnnotationBody("");
-  }, [activeAnnotation]);
+  }, [activeAnnotation, deleteMutation, ideaSlug, queryClient, selectedStudy]);
 
   return {
     annotations,

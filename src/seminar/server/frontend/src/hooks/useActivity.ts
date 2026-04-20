@@ -1,6 +1,6 @@
-import { useSeminarState } from "./useSeminarStore";
+import { useRealtimeState } from "../realtime/RealtimeProvider";
 
 export function useActivity() {
-  const { activity } = useSeminarState();
+  const { activity } = useRealtimeState();
   return { activity };
 }

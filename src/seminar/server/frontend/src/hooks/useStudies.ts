@@ -1,4 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { getIdeaStudies } from "../api/ideas";
+import { queryKeys } from "../realtime/queryKeys";
 import type { StudyFile } from "../types";
 
 interface UseStudiesResult {
@@ -7,39 +10,44 @@ interface UseStudiesResult {
 }
 
 export function useStudies(studyCounts: Record<string, number>): UseStudiesResult {
-  const [cache, setCache] = useState<Record<string, StudyFile[]>>({});
+  const queryClient = useQueryClient();
+  const [subscribedSlugs, setSubscribedSlugs] = useState<string[]>([]);
   const prevCounts = useRef<Record<string, number>>({});
-  const subscribedSlugs = useRef<Set<string>>(new Set());
+
+  const studyQueries = useQueries({
+    queries: subscribedSlugs.map((slug) => ({
+      queryKey: queryKeys.ideaStudies(slug),
+      queryFn: ({ signal }: { signal: AbortSignal }) => getIdeaStudies(slug, signal),
+      staleTime: Infinity,
+    })),
+  });
 
   useEffect(() => {
     const prev = prevCounts.current;
-    const toRefetch: string[] = [];
-    for (const slug of subscribedSlugs.current) {
+    for (const slug of subscribedSlugs) {
       if ((studyCounts[slug] ?? 0) !== (prev[slug] ?? 0)) {
-        toRefetch.push(slug);
+        void queryClient.invalidateQueries({ queryKey: queryKeys.ideaStudies(slug) });
       }
     }
     prevCounts.current = { ...studyCounts };
-
-    for (const slug of toRefetch) {
-      fetch(`/api/ideas/${slug}/studies`)
-        .then((r) => r.json())
-        .then((data: StudyFile[]) =>
-          setCache((c) => ({ ...c, [slug]: data }))
-        )
-        .catch(() => {});
-    }
-  }, [studyCounts]);
+  }, [queryClient, studyCounts, subscribedSlugs]);
 
   const fetchStudies = useCallback((slug: string) => {
-    subscribedSlugs.current.add(slug);
-    fetch(`/api/ideas/${slug}/studies`)
-      .then((r) => r.json())
-      .then((data: StudyFile[]) =>
-        setCache((c) => ({ ...c, [slug]: data }))
-      )
-      .catch(() => {});
-  }, []);
+    setSubscribedSlugs((current) => (current.includes(slug) ? current : [...current, slug]));
+    void queryClient.prefetchQuery({
+      queryKey: queryKeys.ideaStudies(slug),
+      queryFn: ({ signal }) => getIdeaStudies(slug, signal),
+      staleTime: Infinity,
+    });
+  }, [queryClient]);
 
-  return { studiesCache: cache, fetchStudies };
+  const studiesCache = useMemo(() => {
+    const next: Record<string, StudyFile[]> = {};
+    for (const [index, slug] of subscribedSlugs.entries()) {
+      next[slug] = studyQueries[index]?.data ?? [];
+    }
+    return next;
+  }, [studyQueries, subscribedSlugs]);
+
+  return { studiesCache, fetchStudies };
 }
