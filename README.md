@@ -5,9 +5,9 @@
 
 Seminar is a local research desk where AI agents investigate ideas from multiple angles over time.
 
-Drop in an idea and leave it alone for a while. Seminar turns it into ongoing research: workers study it from different angles, revisit it over time, surface tensions or gaps, and propose new threads when the existing work suggests there is more to explore.
+Drop in an idea and leave it alone for a while. Workers claim it, research it, and write studies, each from a deliberate angle. Studies accumulate until a follow-up worker decides the corpus is ready and writes a final synthesis. Along the way, agents can open conversation threads with you, and a separate connective worker reads across the whole corpus looking for genuinely new directions worth pursuing.
 
-When you come back, you'll have a growing body of studies, a queue of follow-up proposals, open threads with agents, and a dashboard for deciding what to pursue, approve, reject, or close. Good thinking needs more than one perspective. Seminar helps you surface them early.
+When you come back, you'll have a growing body of studies, a queue of follow-up proposals, open threads with agents, and a dashboard for deciding what to pursue, approve, reject, or close.
 
 Seminar runs locally and uses the tools you already have. It does not ship its own model backend; instead, it runs agents through [Claude Code](https://claude.com/claude-code) or [Codex](https://github.com/openai/codex), so it fits into an existing Claude or OpenAI workflow.
 
@@ -15,15 +15,15 @@ Seminar runs locally and uses the tools you already have. It does not ship its o
 
 Three kinds of workers run against the queue on their own schedule:
 
-- Initial exploration: claims unexplored ideas and writes the first study.
-- Follow-up research: revisits studied ideas from a new angle, or writes the final synthesis when the topic is ready to close.
-- Connective research: reads across the corpus and proposes new ideas the existing studies suggest but don't address.
+- Initial exploration: claims an unexplored idea and writes the first study, choosing an angle (deep dive, contrarian take, cross-discipline connection, case study) rather than defaulting to a survey.
+- Follow-up research: reads the existing studies and decides whether more research is needed or whether the corpus is ready to close. If more research, it writes a new study from a fresh angle, building on but not repeating prior work. If ready, it writes the synthesis, a capstone document that stands alone as the complete account of what was found.
+- Connective research: reads across the whole corpus, does external research, and opens a thread with you when something genuinely new has emerged. The bar is high; exiting without creating anything is the expected outcome. When it does open a thread, the goal is to make you think hard about whether the idea deserves promotion, not to hand you a ready-made proposal.
 
-Workers can also propose follow-up ideas, which you approve or reject from the dashboard.
+Initial exploration and follow-up research workers can also propose new ideas mid-research, which land in the proposals queue for you to approve or reject from the dashboard.
 
-Agents can also start conversation threads with you, and you can reply from the dashboard. Each reply spins up a fresh stateless responder turn rather than keeping a live session open.
+Agents can start conversation threads with you at any point, and you can reply from the dashboard. Each reply spins up a fresh stateless turn with no persistent session. If a thread produces concrete research guidance, the thread responder can write a director note directly into the idea's study sequence; follow-up researchers treat the most recent director note as a priority input for their next study.
 
-A study is a long-form research document (750+ words) written by a worker agent. Each study takes a deliberate angle on the idea: a deep dive, a contrarian take, a cross-discipline connection, a concrete case study. Studies are required to be well-sourced. Multiple studies accumulate on the same idea over time, each adding a new perspective, until a final synthesis study closes it out.
+A study is a long-form research document (750+ words). Studies are required to be well-sourced. Multiple studies accumulate on the same idea over time, each adding a new perspective, until a synthesis closes it out.
 
 ## Quick start
 
@@ -68,12 +68,13 @@ Use the Tools field in Settings for simple notes like "use `gh` for GitHub data"
 
 ## Storage
 
-Everything lives under `data_dir`:
+State lives under `data_dir` (default `~/.seminar`):
 
 - `state.db`: durable state, including all studies
 - `logs/`: worker run logs
 - `scratch/`: per-run working directories and study artefacts
-- `skills/`: installed worker prompt templates used at runtime
+
+Worker skill templates are installed separately to `~/.seminar/skills` and are not affected by changing `data_dir`.
 
 ## CLI
 
@@ -85,25 +86,32 @@ seminar init [--provider <name>]
 seminar pause | resume
 seminar status [slug]
 seminar done <slug>
+seminar reopen <slug>
 seminar reset <slug> | reset-all
 seminar nuke-db
 seminar uninstall
 
 seminar ideas list
 seminar ideas read <slug>
+seminar ideas initial-expectation <slug>
+seminar ideas director-note <slug> [--thread <id>]   # body via stdin
 seminar ideas propose <slug> <parent-slug>... [--title <title>] --author <name>
 
 seminar proposals list
 seminar proposals approve <slug>
 seminar proposals reject <slug>
 
-seminar threads start <title> --author <name>
+seminar threads start <title> --author <name> [--idea <slug>]
 seminar threads reply <thread-id> --author <name>
 seminar threads close <thread-id>
 
 seminar studies list <slug>
 seminar studies read <slug> <study-number>
 seminar complete-study <slug> <study-number> <markdown-path> [--mode <mode>] --title <title>
+
+# agent-facing (used by worker skill templates)
+seminar claim-new
+seminar claim-further
 ```
 
 ## Development

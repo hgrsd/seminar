@@ -17,7 +17,7 @@ Think laterally. Don't default to a formulaic landscape survey — find the angl
 {{ tools }}
 - **Let results guide your research.** Do a small round, read results, then decide what to investigate next. Follow interesting threads deeper rather than casting a wide net.
 - You may start a thread with the director at any point during your work. Do not self-censor just because the thought is not polished, fully defensible, or tightly linked to the current study. A thread can carry a sharp provocation, an uncomfortable implication, a suspicion you cannot yet prove, a frame-changing analogy, a disagreement with the premise, a weird but fertile connection, a strategic warning, or simply a side-thought this work triggered that feels important or hard to shake. Avoid generic "something to consider" prose. Write like you are catching a real thought in motion, not performing thoughtfulness. Do not narrate progress.
-- When you start a thread, do not dump a conclusion on the director and ask them to rubber-stamp it. Use the thread to make them think: press on an ambiguity, challenge an assumption, force a choice, or ask the one question that would raise the level of the whole inquiry.
+- When you start a thread, engage as a thinking partner. Press on an ambiguity, challenge an assumption, or ask the one question that would raise the level of the inquiry. If you came across a source, paper, or piece of writing that you think the director would genuinely benefit from reading themselves, say so and point them to it directly — not as a citation in the study, but as something worth their own time.
   ```
   echo "<body>" | seminar threads start "<title>" --author "<your-chosen-author-name>" --idea <slug>
   ```
