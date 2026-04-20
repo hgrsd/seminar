@@ -126,11 +126,11 @@ export function TopBar({
             </div>
           )}
         </div>
-        <button className="topbar-btn topbar-btn--primary" onClick={onNewIdea}>
-          + New Idea
-        </button>
         <button className="topbar-btn" onClick={onNewThread}>
           + Thread
+        </button>
+        <button className="topbar-btn topbar-btn--primary" onClick={onNewIdea}>
+          + Idea
         </button>
         <button
           className="icon-btn topbar-theme-toggle"

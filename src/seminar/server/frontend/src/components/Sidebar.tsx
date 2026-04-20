@@ -289,9 +289,10 @@ export function Sidebar({
       </div>
 
       <div className="sidebar-sections">
+        <div className="sidebar-group-heading">Threads</div>
         {([
-          ["open", "Threads"],
-          ["closed", "Closed Threads"],
+          ["open", "Open"],
+          ["closed", "Closed"],
         ] as const).map(([status, label]) => {
           const items = threadsByStatus[status];
           const key = `threads_${status}`;
@@ -319,6 +320,7 @@ export function Sidebar({
 
         <div className="sidebar-section-divider" aria-hidden="true" />
 
+        <div className="sidebar-group-heading">Ideas</div>
         {SECTIONS.map(({ key, label }) => {
           const items = grouped[key];
           const isCollapsed = collapsed[key] ?? false;
@@ -380,6 +382,7 @@ export function Sidebar({
 
         <div className="sidebar-section-divider" aria-hidden="true" />
 
+        <div className="sidebar-group-heading">Proposals</div>
         {(() => {
           const isCollapsed = collapsed.proposals_pending ?? false;
           return (
@@ -391,7 +394,7 @@ export function Sidebar({
                 <span className="sidebar-section-arrow">
                   {pendingProposals.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
                 </span>
-                <span className="sidebar-section-label">Pending Proposals</span>
+                <span className="sidebar-section-label">Pending</span>
                 <span className="sidebar-section-count">{pendingProposals.length}</span>
               </button>
               {!isCollapsed && pendingProposals.length > 0 && (
@@ -423,7 +426,7 @@ export function Sidebar({
                 <span className="sidebar-section-arrow">
                   {rejectedProposals.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
                 </span>
-                <span className="sidebar-section-label">Rejected Proposals</span>
+                <span className="sidebar-section-label">Rejected</span>
                 <span className="sidebar-section-count">{rejectedProposals.length}</span>
               </button>
               {!isCollapsed && rejectedProposals.length > 0 && (

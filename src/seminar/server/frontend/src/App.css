@@ -417,6 +417,15 @@ textarea {
   margin-bottom: 2px;
 }
 
+.sidebar-group-heading {
+  padding: 10px 16px 4px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
 .sidebar-section-divider {
   height: 1px;
   margin: 8px 12px;
