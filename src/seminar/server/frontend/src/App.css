@@ -2405,6 +2405,7 @@ textarea {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
+  padding: 10px;
 }
 
 .search-empty {
@@ -2417,23 +2418,29 @@ textarea {
 .search-result {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   width: 100%;
   text-align: left;
-  padding: 6px 12px;
-  transition: background var(--transition-fast);
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  transition: background var(--transition-fast), border-color var(--transition-normal), box-shadow var(--transition-normal);
 }
 
 .search-result:hover {
   background: var(--bg);
+  border-color: var(--text-muted);
+  box-shadow: var(--shadow-sm);
 }
 
 .search-result-badge {
   font-size: 10px;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--text-muted);
+  color: var(--text-secondary);
 }
 
 .search-result-title {
