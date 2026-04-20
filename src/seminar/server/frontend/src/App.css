@@ -417,6 +417,12 @@ textarea {
   margin-bottom: 2px;
 }
 
+.sidebar-section-divider {
+  height: 1px;
+  margin: 8px 12px;
+  background: var(--border);
+}
+
 .sidebar-section-header {
   display: flex;
   align-items: center;

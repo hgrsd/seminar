@@ -24,9 +24,9 @@ interface SectionConfig {
 }
 
 const SECTIONS: SectionConfig[] = [
-  { key: "not_started", label: "Unexplored" },
   { key: "active", label: "Exploring" },
   { key: "done", label: "Well-understood" },
+  { key: "not_started", label: "Unexplored" },
 ];
 
 const ALL_SECTION_KEYS = [
@@ -79,6 +79,60 @@ function compareIdeas(a: Idea, b: Idea, field: SortField, dir: SortDir, activeSl
 function sortIdeas(ideas: Idea[], sort: SortState, activeSlugs: Set<string>): Idea[] {
   if (!sort) return ideas;
   return [...ideas].sort((a, b) => compareIdeas(a, b, sort.field, sort.dir, activeSlugs));
+}
+
+function compareThreads(a: ThreadSummary, b: ThreadSummary, field: SortField, dir: SortDir): number {
+  switch (field) {
+    case "name":
+      return dir === "asc"
+        ? a.title.localeCompare(b.title)
+        : b.title.localeCompare(a.title);
+    case "created":
+      return dir === "asc"
+        ? a.created_at.localeCompare(b.created_at)
+        : b.created_at.localeCompare(a.created_at);
+    case "activity": {
+      const rank = (thread: ThreadSummary) => {
+        switch (thread.status) {
+          case "waiting_on_user":
+            return 0;
+          case "waiting_on_agent":
+            return 1;
+          case "closed":
+            return 2;
+        }
+      };
+      const rankDiff = rank(a) - rank(b);
+      if (rankDiff !== 0) return rankDiff;
+      return dir === "asc"
+        ? a.updated_at.localeCompare(b.updated_at)
+        : b.updated_at.localeCompare(a.updated_at);
+    }
+  }
+}
+
+function sortThreads(threads: ThreadSummary[], sort: SortState): ThreadSummary[] {
+  if (!sort) return threads;
+  return [...threads].sort((a, b) => compareThreads(a, b, sort.field, sort.dir));
+}
+
+function compareProposals(a: Proposal, b: Proposal, field: SortField, dir: SortDir): number {
+  switch (field) {
+    case "name":
+      return dir === "asc"
+        ? a.title.localeCompare(b.title)
+        : b.title.localeCompare(a.title);
+    case "created":
+    case "activity":
+      return dir === "asc"
+        ? a.recorded_at.localeCompare(b.recorded_at)
+        : b.recorded_at.localeCompare(a.recorded_at);
+  }
+}
+
+function sortProposals(proposals: Proposal[], sort: SortState): Proposal[] {
+  if (!sort) return proposals;
+  return [...proposals].sort((a, b) => compareProposals(a, b, sort.field, sort.dir));
 }
 
 export function Sidebar({
@@ -184,15 +238,25 @@ export function Sidebar({
     </button>
   );
 
-  const threadsByStatus = {
-    open: threads.filter((t) => t.status !== "closed"),
-    closed: threads.filter((t) => t.status === "closed"),
-  };
+  const threadsByStatus = useMemo(() => ({
+    open: sortThreads(threads.filter((t) => t.status !== "closed"), sort),
+    closed: sortThreads(threads.filter((t) => t.status === "closed"), sort),
+  }), [sort, threads]);
+
+  const pendingProposals = useMemo(
+    () => sortProposals(proposals.filter((p) => p.status === "pending"), sort),
+    [proposals, sort],
+  );
+
+  const rejectedProposals = useMemo(
+    () => sortProposals(proposals.filter((p) => p.status === "rejected"), sort),
+    [proposals, sort],
+  );
 
   return (
     <aside className="sidebar">
       <div className="sidebar-sort-bar">
-        {([["name", "A-Z"], ["created", "New"], ["activity", "Active"]] as const).map(([field, label]) => {
+        {([["name", "A-Z"], ["created", "Date"], ["activity", "Active"]] as const).map(([field, label]) => {
           const active = sort?.field === field;
           const arrow = active ? (sort.dir === "asc" ? " ↑" : " ↓") : "";
           return (
@@ -202,6 +266,7 @@ export function Sidebar({
               onClick={() => setSort((prev) => {
                 if (prev?.field !== field) return { field, dir: defaultSortDir(field) };
                 if (prev.dir === "asc") return { field, dir: "desc" };
+                if (prev.dir === "desc") return { field, dir: "asc" };
                 return null;
               })}
             >
@@ -252,40 +317,7 @@ export function Sidebar({
           );
         })}
 
-        {(() => {
-          const pendingProposals = proposals
-            .filter((p) => p.status === "pending")
-            .sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
-          const isCollapsed = collapsed.proposals_pending ?? false;
-          return (
-            <div className="sidebar-section">
-              <button
-                className={`sidebar-section-header ${pendingProposals.length === 0 ? "sidebar-section-header--empty" : ""}`}
-                onClick={() => pendingProposals.length > 0 && toggleSection("proposals_pending")}
-              >
-                <span className="sidebar-section-arrow">
-                  {pendingProposals.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
-                </span>
-                <span className="sidebar-section-label">Pending Proposals</span>
-                <span className="sidebar-section-count">{pendingProposals.length}</span>
-              </button>
-              {!isCollapsed && pendingProposals.length > 0 && (
-                <div className="sidebar-section-items">
-                  {pendingProposals.map((proposal) => (
-                    <button
-                      key={`proposal-${proposal.slug}`}
-                      id={`sidebar-proposal-${proposal.slug}`}
-                      className={`sidebar-study-item ${proposal.slug === selectedProposal ? "sidebar-study-item--selected" : ""}`}
-                      onClick={() => onNavigate({ type: "proposal", slug: proposal.slug })}
-                    >
-                      <span className="sidebar-study-name">{proposal.title}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })()}
+        <div className="sidebar-section-divider" aria-hidden="true" />
 
         {SECTIONS.map(({ key, label }) => {
           const items = grouped[key];
@@ -346,10 +378,41 @@ export function Sidebar({
           );
         })}
 
+        <div className="sidebar-section-divider" aria-hidden="true" />
+
         {(() => {
-          const rejectedProposals = proposals
-            .filter((p) => p.status === "rejected")
-            .sort((a, b) => b.recorded_at.localeCompare(a.recorded_at));
+          const isCollapsed = collapsed.proposals_pending ?? false;
+          return (
+            <div className="sidebar-section">
+              <button
+                className={`sidebar-section-header ${pendingProposals.length === 0 ? "sidebar-section-header--empty" : ""}`}
+                onClick={() => pendingProposals.length > 0 && toggleSection("proposals_pending")}
+              >
+                <span className="sidebar-section-arrow">
+                  {pendingProposals.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
+                </span>
+                <span className="sidebar-section-label">Pending Proposals</span>
+                <span className="sidebar-section-count">{pendingProposals.length}</span>
+              </button>
+              {!isCollapsed && pendingProposals.length > 0 && (
+                <div className="sidebar-section-items">
+                  {pendingProposals.map((proposal) => (
+                    <button
+                      key={`proposal-${proposal.slug}`}
+                      id={`sidebar-proposal-${proposal.slug}`}
+                      className={`sidebar-study-item ${proposal.slug === selectedProposal ? "sidebar-study-item--selected" : ""}`}
+                      onClick={() => onNavigate({ type: "proposal", slug: proposal.slug })}
+                    >
+                      <span className="sidebar-study-name">{proposal.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()}
+
+        {(() => {
           const isCollapsed = collapsed.rejected_proposals ?? false;
           return (
             <div className="sidebar-section">
