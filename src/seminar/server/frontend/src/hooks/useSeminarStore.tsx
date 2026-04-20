@@ -12,7 +12,7 @@ import * as proposalsApi from "../api/proposals";
 import * as threadsApi from "../api/threads";
 import * as workersApi from "../api/workers";
 import * as systemApi from "../api/system";
-import type { Settings } from "../types";
+import type { Idea, Proposal, Responder, Settings, ThreadSummary, Worker } from "../types";
 
 export function SeminarProvider({ children }: { children: ReactNode }) {
   return <RealtimeProvider>{children}</RealtimeProvider>;
@@ -36,25 +36,35 @@ export function useSeminarState() {
   const snapshotQuery = useSeededSnapshotQuery();
   const realtime = useRealtimeState();
   const snapshot = snapshotQuery.data;
+  const ideas = queryClient.getQueryData<Idea[]>(queryKeys.ideas) ?? snapshot?.ideas ?? [];
+  const workers = queryClient.getQueryData<Worker[]>(queryKeys.workers) ?? snapshot?.workers ?? [];
+  const studyCounts = queryClient.getQueryData<Record<string, number>>(queryKeys.studyCounts) ?? snapshot?.study_counts ?? {};
+  const proposals = queryClient.getQueryData<Proposal[]>(queryKeys.proposals) ?? snapshot?.proposals ?? [];
+  const threads = queryClient.getQueryData<ThreadSummary[]>(queryKeys.threads) ?? snapshot?.threads ?? [];
+  const responders = queryClient.getQueryData<Responder[]>(queryKeys.responders) ?? snapshot?.responders ?? [];
 
   return useMemo(() => ({
-    ideas: snapshot?.ideas ?? queryClient.getQueryData(queryKeys.ideas) ?? [],
-    workers: snapshot?.workers ?? queryClient.getQueryData(queryKeys.workers) ?? [],
+    ideas,
+    workers,
     activity: realtime.activity,
-    studyCounts: snapshot?.study_counts ?? queryClient.getQueryData(queryKeys.studyCounts) ?? {},
-    proposals: snapshot?.proposals ?? queryClient.getQueryData(queryKeys.proposals) ?? [],
-    threads: snapshot?.threads ?? queryClient.getQueryData(queryKeys.threads) ?? [],
-    responders: snapshot?.responders ?? queryClient.getQueryData(queryKeys.responders) ?? [],
+    studyCounts,
+    proposals,
+    threads,
+    responders,
     paused: realtime.paused,
     sessionCost: realtime.sessionCost,
     connected: realtime.connected,
   }), [
-    queryClient,
+    ideas,
     realtime.activity,
     realtime.connected,
     realtime.paused,
     realtime.sessionCost,
-    snapshot,
+    proposals,
+    responders,
+    studyCounts,
+    threads,
+    workers,
   ]);
 }
 

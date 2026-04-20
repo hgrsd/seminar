@@ -397,6 +397,7 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
   );
 
   if (selectedThread) {
+    const activeThreadWorker = activeWorkers.get(`thread-${selectedThread.id}`) ?? null;
     const handleDeleteThread = () => {
       if (!confirmDeleteThread) {
         setConfirmDeleteThread(true);
@@ -432,6 +433,15 @@ export function ReadingPane({ idea, selectedProposal, selectedThread, activeWork
             <header className="reading-pane-header">
               <h1 className="reading-pane-title">{selectedThread.title}</h1>
               <div className="reading-pane-meta">
+                {activeThreadWorker && (
+                  <button
+                    className="locked-indicator locked-indicator--clickable"
+                    onClick={() => onWorkerClick(activeThreadWorker.id)}
+                  >
+                    <span className="pulse-dot pulse-dot--small" style={{ background: WORKER_TYPE_COLORS[activeThreadWorker.type] }} />
+                    Being processed by worker {activeThreadWorker.id} ({workerTypeLabel(activeThreadWorker.type)})
+                  </button>
+                )}
                 <span className="reading-pane-byline">
                   {selectedThread.status.replace(/_/g, " ")}
                   {selectedThread.updated_at && <> · {relativeTime(selectedThread.updated_at)}</>}
