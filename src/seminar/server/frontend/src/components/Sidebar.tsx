@@ -301,11 +301,11 @@ export function Sidebar({
                 className={`sidebar-section-header ${items.length === 0 ? "sidebar-section-header--empty" : ""}`}
                 onClick={() => items.length > 0 && toggleSection(key)}
               >
+                <span className="sidebar-section-label">{label}</span>
+                <span className="sidebar-section-count">{items.length}</span>
                 <span className="sidebar-section-arrow">
                   {items.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
                 </span>
-                <span className="sidebar-section-label">{label}</span>
-                <span className="sidebar-section-count">{items.length}</span>
               </button>
               {!isCollapsed && items.length > 0 && (
                 <div className="sidebar-section-items">
@@ -328,11 +328,11 @@ export function Sidebar({
                 className={`sidebar-section-header ${items.length === 0 ? "sidebar-section-header--empty" : ""}`}
                 onClick={() => items.length > 0 && toggleSection(key)}
               >
+                <span className="sidebar-section-label">{label}</span>
+                <span className="sidebar-section-count">{items.length}</span>
                 <span className="sidebar-section-arrow">
                   {items.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
                 </span>
-                <span className="sidebar-section-label">{label}</span>
-                <span className="sidebar-section-count">{items.length}</span>
               </button>
               {!isCollapsed && (
                 <div className="sidebar-section-items">
@@ -389,11 +389,11 @@ export function Sidebar({
                 className={`sidebar-section-header ${pendingProposals.length === 0 ? "sidebar-section-header--empty" : ""}`}
                 onClick={() => pendingProposals.length > 0 && toggleSection("proposals_pending")}
               >
+                <span className="sidebar-section-label">Pending</span>
+                <span className="sidebar-section-count">{pendingProposals.length}</span>
                 <span className="sidebar-section-arrow">
                   {pendingProposals.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
                 </span>
-                <span className="sidebar-section-label">Pending</span>
-                <span className="sidebar-section-count">{pendingProposals.length}</span>
               </button>
               {!isCollapsed && pendingProposals.length > 0 && (
                 <div className="sidebar-section-items">
@@ -421,11 +421,11 @@ export function Sidebar({
                 className={`sidebar-section-header ${rejectedProposals.length === 0 ? "sidebar-section-header--empty" : ""}`}
                 onClick={() => rejectedProposals.length > 0 && toggleSection("rejected_proposals")}
               >
+                <span className="sidebar-section-label">Rejected</span>
+                <span className="sidebar-section-count">{rejectedProposals.length}</span>
                 <span className="sidebar-section-arrow">
                   {rejectedProposals.length === 0 ? "" : isCollapsed ? "▸" : "▾"}
                 </span>
-                <span className="sidebar-section-label">Rejected</span>
-                <span className="sidebar-section-count">{rejectedProposals.length}</span>
               </button>
               {!isCollapsed && rejectedProposals.length > 0 && (
                 <div className="sidebar-section-items">

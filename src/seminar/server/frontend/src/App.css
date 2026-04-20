@@ -459,9 +459,12 @@ textarea {
 }
 
 .sidebar-section-arrow {
-  font-size: 10px;
-  width: 12px;
+  flex-shrink: 0;
+  width: 18px;
+  font-size: 18px;
+  line-height: 1;
   text-align: center;
+  color: var(--text-muted);
 }
 
 .sidebar-section-label {
@@ -561,6 +564,7 @@ textarea {
 .sidebar-item-arrow {
   flex-shrink: 0;
   font-size: 18px;
+  line-height: 1;
   color: var(--text-muted);
   width: 18px;
   text-align: center;
