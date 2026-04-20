@@ -3,82 +3,46 @@
 ![](./assets/screenshot.png)
 ![](./assets/screenshot_2.png)
 
-Seminar is a local research desk where AI agents investigate ideas from multiple angles over time.
+Seminar is a research desk for ideas that deserve more than a chat session.
 
-Drop in an idea and leave it alone for a while. Workers claim it, research it, and write studies, each from a deliberate angle. Studies accumulate until a follow-up worker decides the corpus is ready and writes a final synthesis. Along the way, agents can open conversation threads with you, and a separate connective worker reads across the whole corpus looking for genuinely new directions worth pursuing.
+Drop one in and leave. Agents pick it up, each from a different angle: a deep dive, a contrarian take, a cross-discipline link, a case study. Studies pile up on the idea's page. When the corpus is ready, a later agent writes a synthesis that closes it out.
 
-When you come back, you'll have a growing body of studies, a queue of follow-up proposals, open threads with agents, and a dashboard for deciding what to pursue, approve, reject, or close.
+It is not an oracle. It gives you things to read and questions to sit with. Studies are long and sourced on purpose. When an agent interrupts you, it's with a question, not a conclusion.
 
-Seminar runs locally and uses the tools you already have. It does not ship its own model backend; instead, it runs agents through [Claude Code](https://claude.com/claude-code) or [Codex](https://github.com/openai/codex), so it fits into an existing Claude or OpenAI workflow.
+## Using it
+
+Open the dashboard. Your ideas are on the left with study counts next to them. Click one to see the original idea definition and every study written under it so far. Read one, read them all, or jump to the synthesis.
+
+Threads are the means of making the thinking more collaborative. An agent might flag a tension between two studies, question an assumption, or hand you a reading list before the next round. The bar for opening one is high, so when a thread shows up it's worth opening. Reply at whatever depth you want. If your reply contains real steering, it becomes a director's note on the idea, and the next agent to pick it up treats that note as a priority. This is how you steer the research: by talking to the agents already doing it.
+
+Agents can also propose new ideas for you to approve, reject (or ignore...).
 
 ## How it works
 
-Three kinds of workers run against the queue on their own schedule:
+Three kinds of workers run against the queue.
 
-- Initial exploration: claims an unexplored idea and writes the first study, choosing an angle (deep dive, contrarian take, cross-discipline connection, case study) rather than defaulting to a survey.
-- Follow-up research: reads the existing studies and decides whether more research is needed or whether the corpus is ready to close. If more research, it writes a new study from a fresh angle, building on but not repeating prior work. If ready, it writes the synthesis, a capstone document that stands alone as the complete account of what was found.
-- Connective research: reads across the whole corpus, does external research, and opens a thread with you when something genuinely new has emerged. The bar is high; exiting without creating anything is the expected outcome. When it does open a thread, the goal is to make you think hard about whether the idea deserves promotion, not to hand you a ready-made proposal.
+An initial exploration worker claims an unexplored idea and writes the opening study. A follow-up research worker reads what exists and decides whether the idea needs another study or is ready for synthesis, then writes whichever applies. A connective worker reads across everything you're researching, does its own external reading, and opens a thread only when something genuinely new has surfaced to ask you for your views or to propose a new idea for further study.
 
-Initial exploration and follow-up research workers can also propose new ideas mid-research, which land in the proposals queue for you to approve or reject from the dashboard.
+## Running it
 
-Agents can start conversation threads with you at any point, and you can reply from the dashboard. Each reply spins up a fresh stateless turn with no persistent session. If a thread produces concrete research guidance, the thread responder can write a director note directly into the idea's study sequence; follow-up researchers treat the most recent director note as a priority input for their next study.
+Seminar runs locally and brings no model of its own. It drives agents through [Claude Code](https://claude.com/claude-code) or [Codex](https://github.com/openai/codex), so it fits into a setup you already have.
 
-A study is a long-form research document (750+ words). Studies are required to be well-sourced. Multiple studies accumulate on the same idea over time, each adding a new perspective, until a synthesis closes it out.
-
-## Quick start
-
-Requirements: Python 3.10+, `uv`, Node.js 18+, npm, and Claude Code or Codex installed locally.
+You'll need Python 3.10+, `uv`, Node.js 18+, npm, and Claude Code or Codex on your machine.
 
 ```bash
 git clone https://github.com/hgrsd/seminar
 cd seminar
 ./install.sh
-```
-
-The installer builds the frontend, installs the `seminar` CLI, and runs `seminar init` once to bootstrap local state and install the default worker skills.
-
-Then:
-
-```bash
 seminar
 ```
 
 The dashboard opens at `http://127.0.0.1:8765`. Pass `--headless` to skip the browser.
 
-Open Settings in the dashboard to choose the provider, adjust the agent command, set worker counts and timing, and tell agents what tools and local resources they can use.
+Configuration lives in the dashboard's Settings panel: provider, worker counts, poll intervals, timeouts, and notes about what tools and resources agents can use. The Tools field is where you tell agents things like "use `gh` for GitHub" or "check the internal wiki before the open web."
 
-## Configuration
+## Reference
 
-`seminar init` creates `~/.seminar/config.json` and installs the default worker skill templates into `~/.seminar/skills`. Ongoing configuration is managed from the dashboard's Settings modal.
-
-Settings currently cover:
-
-| Key | Purpose |
-| --- | --- |
-| `data_dir` | Where state, logs, and study artifacts live |
-| `provider` | `claude-code` or `codex` |
-| `agent_cmd` | The exact (non-interactive, permission-skipping) command used to launch the agent |
-| `workers.{initial,follow_up,connective}` | Number of workers of each type |
-| `intervals.*` | Poll interval, in seconds, per worker type |
-| `timeouts.*` | Per-run timeout, in seconds, per worker type |
-| `follow_up_research_cooldown_minutes` | Minimum gap before an idea is re-studied |
-| `tools` | Notes for agents about the tools, files, sites, or other resources available in your environment |
-
-Use the Tools field in Settings for simple notes like "use `gh` for GitHub data", "check our internal wiki first", or "read this local folder before going to the web."
-
-## Storage
-
-State lives under `data_dir` (default `~/.seminar`):
-
-- `state.db`: durable state, including all studies
-- `logs/`: worker run logs
-- `scratch/`: per-run working directories and study artefacts
-
-Worker skill templates are installed separately to `~/.seminar/skills` and are not affected by changing `data_dir`.
-
-## CLI
-
-The dashboard covers the human workflow, including configuration. Most CLI commands are intended for workers and external agents: they are how agents claim ideas, submit studies, and propose follow-ups without going through the UI. The handful of exceptions are bootstrap or administrative operations such as `init`, pausing, resetting, and wiping the database.
+The dashboard covers the human workflow. The CLI is mostly for worker agents claiming ideas and submitting studies, plus a handful of admin commands.
 
 ```text
 seminar [--headless]           # launch server + dashboard
@@ -109,7 +73,6 @@ seminar studies list <slug>
 seminar studies read <slug> <study-number>
 seminar complete-study <slug> <study-number> <markdown-path> [--mode <mode>] --title <title>
 
-# agent-facing (used by worker skill templates)
 seminar claim-new
 seminar claim-further
 ```
