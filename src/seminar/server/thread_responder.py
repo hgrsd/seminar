@@ -11,7 +11,7 @@ from itertools import count
 
 from seminar.config import Config
 from seminar.server.broadcast import BroadcastHub
-from seminar.server.routers.workers import serialize_worker
+from seminar.server.worker_serialization import serialize_worker
 from seminar.service.ideas import IdeaService
 from seminar.service.runs import RunService, RunType
 from seminar.service.studies import StudyService

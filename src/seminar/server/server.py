@@ -15,6 +15,7 @@ from seminar import config, db, providers, service
 from seminar.server.broadcast import BroadcastHub
 from seminar.server.routers import annotations, ideas, proposals, studies, system, threads, workers
 from seminar.server.thread_responder import ThreadResponderRunner
+from seminar.server.worker_serialization import serialize_worker, serialize_workers
 from seminar.service.annotations import AnnotationService
 from seminar.service.ideas import IdeaService
 from seminar.service.initial_expectations import InitialExpectationService
@@ -112,7 +113,7 @@ async def lifespan(app: FastAPI):
         on_event=hub.on_event,
         on_worker_state=lambda ws: hub.publish_event(
             "worker_upserted",
-            workers.serialize_worker(ws.worker_id, ws, app.state.cfg.provider),
+            serialize_worker(ws.worker_id, ws, app.state.cfg.provider),
         ),
         on_worker_removed=lambda wid: hub.publish_event(
             "worker_removed",
@@ -139,7 +140,7 @@ async def lifespan(app: FastAPI):
 def _snapshot_payload(app: FastAPI) -> dict:
     return {
         "ideas": [asdict(s) for s in app.state.idea_service.status_all()],
-        "workers": workers.serialize_workers(
+        "workers": serialize_workers(
             app.state.pool,
             app.state.cfg.provider,
             app.state.thread_runner.active_worker_states(),

@@ -17,6 +17,7 @@ from seminar.server.dependencies import (
     get_thread_runner,
 )
 from seminar.server.thread_responder import ThreadResponderRunner
+from seminar.server.worker_serialization import serialize_workers
 from seminar.service.search import SearchService
 from seminar.workers import WorkerPool
 from seminar.workers.factory import (
@@ -24,7 +25,6 @@ from seminar.workers.factory import (
     make_follow_up_worker,
     make_initial_exploration_worker,
 )
-from seminar.server.routers.workers import serialize_workers
 
 router = APIRouter(prefix="/api")
 
