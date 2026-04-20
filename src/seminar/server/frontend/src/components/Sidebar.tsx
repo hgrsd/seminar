@@ -43,25 +43,42 @@ type SortField = "name" | "created" | "activity";
 type SortDir = "asc" | "desc";
 type SortState = { field: SortField; dir: SortDir } | null;
 
-function compareIdeas(a: Idea, b: Idea, field: SortField, activeSlugs: Set<string>): number {
+function defaultSortDir(field: SortField): SortDir {
   switch (field) {
     case "name":
-      return a.title.localeCompare(b.title);
+      return "asc";
     case "created":
-      return a.recorded_at.localeCompare(b.recorded_at);
+    case "activity":
+      return "desc";
+  }
+}
+
+function compareIdeas(a: Idea, b: Idea, field: SortField, dir: SortDir, activeSlugs: Set<string>): number {
+  switch (field) {
+    case "name":
+      return dir === "asc"
+        ? a.title.localeCompare(b.title)
+        : b.title.localeCompare(a.title);
+    case "created":
+      return dir === "asc"
+        ? a.recorded_at.localeCompare(b.recorded_at)
+        : b.recorded_at.localeCompare(a.recorded_at);
     case "activity": {
       const aActive = activeSlugs.has(a.slug) ? 0 : 1;
       const bActive = activeSlugs.has(b.slug) ? 0 : 1;
       if (aActive !== bActive) return aActive - bActive;
-      return (a.last_studied ?? "").localeCompare(b.last_studied ?? "");
+      const aTimestamp = a.last_studied ?? a.recorded_at;
+      const bTimestamp = b.last_studied ?? b.recorded_at;
+      return dir === "asc"
+        ? aTimestamp.localeCompare(bTimestamp)
+        : bTimestamp.localeCompare(aTimestamp);
     }
   }
 }
 
 function sortIdeas(ideas: Idea[], sort: SortState, activeSlugs: Set<string>): Idea[] {
   if (!sort) return ideas;
-  const flip = sort.dir === "desc" ? -1 : 1;
-  return [...ideas].sort((a, b) => flip * compareIdeas(a, b, sort.field, activeSlugs));
+  return [...ideas].sort((a, b) => compareIdeas(a, b, sort.field, sort.dir, activeSlugs));
 }
 
 export function Sidebar({
@@ -89,7 +106,7 @@ export function Sidebar({
     done: true,
   });
   const [expandedIdeas, setExpandedIdeas] = useState<Record<string, boolean>>({});
-  const [sort, setSort] = useState<SortState>({ field: "name", dir: "asc" });
+  const [sort, setSort] = useState<SortState>({ field: "name", dir: defaultSortDir("name") });
 
   const activeSlugs = useMemo(() => new Set(activeWorkers.keys()), [activeWorkers]);
 
@@ -177,13 +194,13 @@ export function Sidebar({
       <div className="sidebar-sort-bar">
         {([["name", "A-Z"], ["created", "New"], ["activity", "Active"]] as const).map(([field, label]) => {
           const active = sort?.field === field;
-          const arrow = active ? (sort.dir === "asc" ? " ↓" : " ↑") : "";
+          const arrow = active ? (sort.dir === "asc" ? " ↑" : " ↓") : "";
           return (
             <button
               key={field}
               className={`sidebar-sort-btn ${active ? "sidebar-sort-btn--active" : ""}`}
               onClick={() => setSort((prev) => {
-                if (prev?.field !== field) return { field, dir: "asc" };
+                if (prev?.field !== field) return { field, dir: defaultSortDir(field) };
                 if (prev.dir === "asc") return { field, dir: "desc" };
                 return null;
               })}
