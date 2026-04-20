@@ -122,14 +122,18 @@ class StudyService:
         with self.connect() as conn:
             try:
                 conn.execute("BEGIN IMMEDIATE")
-                updates = {"completed_at": completed_at, "title": title, "filename": study_filename, "body": body}
                 if mode is not None:
-                    updates["mode"] = mode
-                set_clause = ", ".join(f"{k} = ?" for k in updates)
-                conn.execute(
-                    f"UPDATE studies SET {set_clause} WHERE idea_slug = ? AND study_number = ?",
-                    (*updates.values(), slug, study_number),
-                )
+                    conn.execute(
+                        "UPDATE studies SET completed_at = ?, title = ?, filename = ?, body = ?, mode = ?"
+                        " WHERE idea_slug = ? AND study_number = ?",
+                        (completed_at, title, study_filename, body, mode, slug, study_number),
+                    )
+                else:
+                    conn.execute(
+                        "UPDATE studies SET completed_at = ?, title = ?, filename = ?, body = ?"
+                        " WHERE idea_slug = ? AND study_number = ?",
+                        (completed_at, title, study_filename, body, slug, study_number),
+                    )
                 mode_row = conn.execute(
                     "SELECT mode FROM studies WHERE idea_slug = ? AND study_number = ?",
                     (slug, study_number),

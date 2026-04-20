@@ -4,7 +4,7 @@ import asyncio
 import logging
 import sys
 from contextlib import asynccontextmanager
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -13,6 +13,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from seminar import config, db, providers, service
+from seminar.config import Config
 from seminar.server.broadcast import BroadcastHub
 from seminar.server.routers import annotations, ideas, proposals, studies, system, threads, workers
 from seminar.server.thread_responder import ThreadResponderRunner
@@ -75,79 +76,109 @@ def _release_file_lock(lock_file) -> None:
     lock_file.close()
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    lock_file = _acquire_file_lock()
+@dataclass
+class AppContext:
+    cfg: Config
+    started_at: str
+    hub: BroadcastHub
+    annotation_service: AnnotationService
+    idea_service: IdeaService
+    initial_expectation_service: InitialExpectationService
+    study_service: StudyService
+    thread_service: ThreadService
+    proposal_service: ProposalService
+    search_service: SearchService
+    run_service: RunService
+    thread_runner: ThreadResponderRunner
+    pool: WorkerPool
 
-    cfg = config.load()
+
+def _build_context(cfg: Config, loop: asyncio.AbstractEventLoop) -> AppContext:
     db.configure(Path(cfg.data_dir))
     db.init_db()
     connect = db.connect
     provider = providers.load(cfg.provider)
 
     hub = BroadcastHub()
-    hub.set_loop(asyncio.get_running_loop())
+    hub.set_loop(loop)
 
-    app.state.hub = hub
-    app.state.annotation_service = AnnotationService(connect)
-    app.state.idea_service = IdeaService(cfg.scratch_dir, connect)
-    app.state.initial_expectation_service = InitialExpectationService(connect)
-    app.state.study_service = StudyService(cfg.scratch_dir, cfg.follow_up_research_cooldown_minutes, connect)
-    app.state.thread_service = ThreadService(connect)
-    app.state.proposal_service = ProposalService(connect)
-    app.state.search_service = SearchService(connect)
-    app.state.run_service = RunService(cfg.logs_dir, provider, connect)
-    app.state.thread_runner = ThreadResponderRunner(
-        cfg,
-        asyncio.get_running_loop(),
-        app.state.run_service,
-        app.state.thread_service,
-        app.state.idea_service,
-        app.state.study_service,
-        hub,
-    )
-    app.state.cfg = cfg
-    app.state.started_at = datetime.now(timezone.utc).isoformat()
+    run_service = RunService(cfg.logs_dir, provider, connect)
+    study_service = StudyService(cfg.scratch_dir, cfg.follow_up_research_cooldown_minutes, connect)
+    idea_service = IdeaService(cfg.scratch_dir, connect)
+    thread_service = ThreadService(connect)
 
-    def publish_session_cost() -> None:
-        hub.publish_event(
-            "session_cost_changed",
-            app.state.run_service.session_cost(app.state.started_at),
-        )
-
-    app.state.run_service.on_run_updated = publish_session_cost
-
-    orphaned = app.state.study_service.reset_orphaned()
-    if orphaned:
-        hub.emit(f"Cleaned up orphaned locks for: {', '.join(orphaned)}")
-
-    app.state.pool = WorkerPool(
-        study_service=app.state.study_service,
-        run_service=app.state.run_service,
+    pool = WorkerPool(
+        study_service=study_service,
+        run_service=run_service,
         on_event=hub.on_event,
         on_worker_state=lambda ws: hub.publish_event(
             "worker_upserted",
-            serialize_worker(ws.worker_id, ws, app.state.cfg.provider),
+            serialize_worker(ws.worker_id, ws, cfg.provider),
         ),
-        on_worker_removed=lambda wid: hub.publish_event(
-            "worker_removed",
-            {"id": wid},
-        ),
+        on_worker_removed=lambda wid: hub.publish_event("worker_removed", {"id": wid}),
     )
 
-    for _ in range(cfg.workers.initial):
-        app.state.pool.spawn(make_initial_exploration_worker(cfg))
-    hub.emit(f"Started {cfg.workers.initial} initial exploration worker(s)")
-    for _ in range(cfg.workers.follow_up):
-        app.state.pool.spawn(make_follow_up_worker(cfg))
-    hub.emit(f"Started {cfg.workers.follow_up} follow-up research worker(s)")
-    for _ in range(cfg.workers.connective):
-        app.state.pool.spawn(make_connective_research_worker(cfg))
-    hub.emit(f"Started {cfg.workers.connective} connective research worker(s)")
+    return AppContext(
+        cfg=cfg,
+        started_at=datetime.now(timezone.utc).isoformat(),
+        hub=hub,
+        annotation_service=AnnotationService(connect),
+        idea_service=idea_service,
+        initial_expectation_service=InitialExpectationService(connect),
+        study_service=study_service,
+        thread_service=thread_service,
+        proposal_service=ProposalService(connect),
+        search_service=SearchService(connect),
+        run_service=run_service,
+        thread_runner=ThreadResponderRunner(
+            cfg, loop, run_service, thread_service, idea_service, study_service, hub,
+        ),
+        pool=pool,
+    )
 
-    hub.set_snapshot_factory(lambda: _snapshot_payload(app))
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    lock_file = _acquire_file_lock()
+    cfg = config.load()
+    ctx = _build_context(cfg, asyncio.get_running_loop())
+
+    app.state.hub = ctx.hub
+    app.state.annotation_service = ctx.annotation_service
+    app.state.idea_service = ctx.idea_service
+    app.state.initial_expectation_service = ctx.initial_expectation_service
+    app.state.study_service = ctx.study_service
+    app.state.thread_service = ctx.thread_service
+    app.state.proposal_service = ctx.proposal_service
+    app.state.search_service = ctx.search_service
+    app.state.run_service = ctx.run_service
+    app.state.thread_runner = ctx.thread_runner
+    app.state.pool = ctx.pool
+    app.state.cfg = ctx.cfg
+    app.state.started_at = ctx.started_at
+
+    ctx.run_service.on_run_updated = lambda: ctx.hub.publish_event(
+        "session_cost_changed",
+        ctx.run_service.session_cost(ctx.started_at),
+    )
+
+    orphaned = ctx.study_service.reset_orphaned()
+    if orphaned:
+        ctx.hub.emit(f"Cleaned up orphaned locks for: {', '.join(orphaned)}")
+
+    for _ in range(cfg.workers.initial):
+        ctx.pool.spawn(make_initial_exploration_worker(cfg))
+    ctx.hub.emit(f"Started {cfg.workers.initial} initial exploration worker(s)")
+    for _ in range(cfg.workers.follow_up):
+        ctx.pool.spawn(make_follow_up_worker(cfg))
+    ctx.hub.emit(f"Started {cfg.workers.follow_up} follow-up research worker(s)")
+    for _ in range(cfg.workers.connective):
+        ctx.pool.spawn(make_connective_research_worker(cfg))
+    ctx.hub.emit(f"Started {cfg.workers.connective} connective research worker(s)")
+
+    ctx.hub.set_snapshot_factory(lambda: _snapshot_payload(app))
     yield
-    await app.state.pool.shutdown()
+    await ctx.pool.shutdown()
     _release_file_lock(lock_file)
 
 

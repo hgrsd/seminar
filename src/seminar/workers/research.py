@@ -60,13 +60,16 @@ class ResearchExecutor:
             self.state.worker_id,
             f"{slug}-{study_number}",
         ) as workspace:
-            claim.workspace_dir = str(workspace.path)
-            claim.study_markdown_path = str(workspace.study_markdown_path)
             self.state.workspace_dir = workspace.path
             if self.on_state_change:
                 self.on_state_change(self.state)
 
-            prompt = f"{self.worker.prompt_preamble}\n\n## Assignment\n\n{json.dumps(asdict(claim))}"
+            assignment = {
+                **asdict(claim),
+                "workspace_dir": str(workspace.path),
+                "study_markdown_path": str(workspace.study_markdown_path),
+            }
+            prompt = f"{self.worker.prompt_preamble}\n\n## Assignment\n\n{json.dumps(assignment)}"
             try:
                 result = await run_agent(
                     self.state, self.worker, self.run_service, self.spawn_process,

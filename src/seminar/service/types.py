@@ -85,8 +85,6 @@ class ClaimResult:
     status: str
     slug: str | None = None
     study_number: int | None = None
-    workspace_dir: str | None = None
-    study_markdown_path: str | None = None
     previous_studies: list[dict] | None = None
 
 
