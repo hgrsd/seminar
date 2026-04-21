@@ -39,19 +39,6 @@ LOCK_PATH = Path.home() / ".seminar" / "seminar.lock"
 FRONTEND_DIST = Path(__file__).parent / "frontend" / "dist"
 
 
-class SPAStaticFiles(StaticFiles):
-    """Serve index.html for frontend routes while preserving asset 404s."""
-
-    async def get_response(self, path: str, scope):
-        response = await super().get_response(path, scope)
-        if response.status_code != 404 or "." in Path(path).name:
-            return response
-        directory = self.directory
-        if directory is None:
-            return response
-        return FileResponse(Path(directory) / "index.html")
-
-
 def _acquire_file_lock():
     LOCK_PATH.parent.mkdir(parents=True, exist_ok=True)
     lock_file = open(LOCK_PATH, "w")
@@ -200,6 +187,22 @@ def _snapshot_payload(app: FastAPI) -> dict:
     }
 
 
+def _mount_frontend_routes(app: FastAPI, frontend_dist: Path) -> None:
+    frontend_assets = frontend_dist / "assets"
+    frontend_index = frontend_dist / "index.html"
+
+    if frontend_assets.exists():
+        app.mount("/assets", StaticFiles(directory=str(frontend_assets)), name="frontend-assets")
+
+    @app.get("/")
+    async def frontend_index_route():
+        return FileResponse(frontend_index)
+
+    @app.get("/{path:path}")
+    async def frontend_route(path: str):
+        return FileResponse(frontend_index)
+
+
 app = FastAPI(lifespan=lifespan)
 
 app.include_router(annotations.router)
@@ -224,7 +227,7 @@ async def websocket_endpoint(ws: WebSocket):
 
 
 if FRONTEND_DIST.exists():
-    app.mount("/", SPAStaticFiles(directory=str(FRONTEND_DIST), html=True), name="frontend")
+    _mount_frontend_routes(app, FRONTEND_DIST)
 
 
 def run(port: int = 8765, headless: bool = False) -> None:
