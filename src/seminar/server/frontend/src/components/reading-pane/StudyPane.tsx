@@ -136,6 +136,7 @@ export function StudyPane({
     () => (activeStudy?.content ? extractToc(activeStudy.content) : []),
     [activeStudy?.content],
   );
+  const proseKey = `${idea.slug}:${selectedStudy}`;
   const mdComponents = useMemo(() => makeHeadingComponents(scrollRef), []);
   const {
     annotationLoading,
@@ -184,6 +185,7 @@ export function StudyPane({
           <TableOfContents entries={tocEntries} scrollRef={scrollRef} />
           {activeStudy.content && (
             <div
+              key={proseKey}
               ref={studyProseRef}
               className="prose prose--annotatable"
               onMouseUp={handleStudySelection}

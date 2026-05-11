@@ -270,22 +270,22 @@ export function useStudyAnnotations(
   }, [ideaSlug, selectedStudy]);
 
   useEffect(() => {
-    if (!activeStudyContent || !studyProseRef.current) return;
-    applyHighlights(studyProseRef.current, annotations);
+    const root = studyProseRef.current;
+    if (!activeStudyContent || !root) return;
+
+    applyHighlights(root, annotations);
     if (annotationPopover?.mode === "create" && annotationPopover.draft) {
       applyTemporarySelectionHighlight(
-        studyProseRef.current,
+        root,
         annotationPopover.draft.rendered_text_start_offset,
         annotationPopover.draft.rendered_text_end_offset,
       );
     } else {
-      clearTemporarySelectionHighlight(studyProseRef.current);
+      clearTemporarySelectionHighlight(root);
     }
     return () => {
-      if (studyProseRef.current) {
-        clearTemporarySelectionHighlight(studyProseRef.current);
-        unwrapHighlights(studyProseRef.current);
-      }
+      clearTemporarySelectionHighlight(root);
+      unwrapHighlights(root);
     };
   }, [activeStudyContent, annotations, annotationPopover]);
 
