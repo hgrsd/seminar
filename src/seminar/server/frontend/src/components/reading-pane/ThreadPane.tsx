@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useThreadDetail } from "../../hooks/useThreadDetail";
@@ -7,8 +7,8 @@ import type { NavigationTarget, ThreadSummary, Worker } from "../../types";
 import { relativeTime, workerTypeLabel, WORKER_TYPE_COLORS } from "../../utils";
 import { ReadingPaneFrame } from "./ReadingPaneCommon";
 
-function isNearBottom(element: HTMLDivElement, threshold = 80): boolean {
-  return element.scrollHeight - element.scrollTop - element.clientHeight <= threshold;
+function isDocumentActive(): boolean {
+  return document.visibilityState === "visible" && document.hasFocus();
 }
 
 interface Props {
@@ -27,58 +27,32 @@ export function ThreadPane({ thread, activeWorkers, onWorkerClick, onNavigate, o
   const [threadAuthorName, setThreadAuthorName] = useState("");
   const [threadSubmitting, setThreadSubmitting] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const prevThreadIdRef = useRef<number | null>(null);
-  const prevThreadMessageCountRef = useRef(0);
-  const threadShouldScrollRef = useRef(false);
-  const threadAtBottomRef = useRef(true);
-  const pendingOwnReplyRef = useRef(false);
+  const prevThreadMessageCountRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    prevThreadMessageCountRef.current = null;
+    scrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [thread.id]);
 
   useEffect(() => {
-    const isNewThread = prevThreadIdRef.current !== thread.id;
-    if (isNewThread) {
-      prevThreadIdRef.current = thread.id;
-      prevThreadMessageCountRef.current = 0;
-      threadShouldScrollRef.current = true;
-    } else if (scrollRef.current) {
-      threadShouldScrollRef.current = threadAtBottomRef.current;
-    }
     setConfirmDelete(false);
   }, [thread.id, thread.updated_at]);
-
-  useEffect(() => {
-    if (!scrollRef.current) return;
-    const element = scrollRef.current;
-    const updateScrollState = () => {
-      threadAtBottomRef.current = isNearBottom(element);
-    };
-
-    updateScrollState();
-    element.addEventListener("scroll", updateScrollState);
-    return () => element.removeEventListener("scroll", updateScrollState);
-  }, [thread.id]);
 
   useEffect(() => {
     if (!threadDetail || !scrollRef.current) return;
 
     const nextCount = threadDetail.messages.length;
     const previousCount = prevThreadMessageCountRef.current;
-    const grew = nextCount > previousCount;
-    const shouldScroll =
-      threadShouldScrollRef.current ||
-      pendingOwnReplyRef.current ||
-      (grew && threadAtBottomRef.current);
+    const grew = previousCount != null && nextCount > previousCount;
 
     prevThreadMessageCountRef.current = nextCount;
 
-    if (!shouldScroll) return;
+    if (!grew || !isDocumentActive()) return;
 
     requestAnimationFrame(() => {
       const element = scrollRef.current;
       if (!element) return;
       element.scrollTo({ top: element.scrollHeight, behavior: "smooth" });
-      threadAtBottomRef.current = true;
-      threadShouldScrollRef.current = false;
-      pendingOwnReplyRef.current = false;
     });
   }, [thread.id, threadDetail]);
 
@@ -97,7 +71,6 @@ export function ThreadPane({ thread, activeWorkers, onWorkerClick, onNavigate, o
   const handleReply = async () => {
     if (!threadReply.trim() || !threadAuthorName.trim()) return;
     setThreadSubmitting(true);
-    pendingOwnReplyRef.current = true;
     try {
       await replyToThread(thread.id, {
         body: threadReply,
