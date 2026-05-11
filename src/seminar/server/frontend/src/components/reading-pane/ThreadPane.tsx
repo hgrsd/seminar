@@ -1,14 +1,55 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { useThreadDetail } from "../../hooks/useThreadDetail";
 import { useThreads } from "../../hooks/useThreads";
-import type { NavigationTarget, ThreadSummary, Worker } from "../../types";
+import type { NavigationTarget, ThreadDetail, ThreadSummary, Worker } from "../../types";
 import { relativeTime, workerTypeLabel, WORKER_TYPE_COLORS } from "../../utils";
-import { ReadingPaneFrame } from "./ReadingPaneCommon";
+import { CopyMarkdownButton, ReadingPaneFrame } from "./ReadingPaneCommon";
 
 function isDocumentActive(): boolean {
   return document.visibilityState === "visible" && document.hasFocus();
+}
+
+function formatThreadStatus(status: ThreadSummary["status"]): string {
+  return status.replace(/_/g, " ");
+}
+
+function formatMarkdownDate(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toISOString();
+}
+
+function buildThreadMarkdown(thread: ThreadDetail): string {
+  const metadata = [
+    `- Status: ${formatThreadStatus(thread.status)}`,
+    `- Created: ${formatMarkdownDate(thread.created_at)}`,
+    `- Updated: ${formatMarkdownDate(thread.updated_at)}`,
+  ];
+
+  if (thread.idea_slug) {
+    metadata.push(`- Idea: ${thread.idea_slug}`);
+  }
+
+  const messages = thread.messages.map((message) => {
+    const heading = `## ${message.author_name} (${message.author_type})`;
+    const details = [`${formatMarkdownDate(message.created_at)}`];
+
+    if (message.event_type) {
+      details.push(`event: ${message.event_type}`);
+    }
+    if (message.related_idea_slug) {
+      const related =
+        message.related_study_number == null
+          ? message.related_idea_slug
+          : `${message.related_idea_slug} study ${message.related_study_number}`;
+      details.push(`related: ${related}`);
+    }
+
+    return [heading, details.join(" · "), "", message.body.trim()].join("\n");
+  });
+
+  return [`# ${thread.title}`, "", metadata.join("\n"), "", ...messages].join("\n\n").trim() + "\n";
 }
 
 interface Props {
@@ -57,6 +98,10 @@ export function ThreadPane({ thread, activeWorkers, onWorkerClick, onNavigate, o
   }, [thread.id, threadDetail]);
 
   const activeThreadWorker = activeWorkers.get(`thread-${thread.id}`) ?? null;
+  const threadMarkdown = useMemo(
+    () => (threadDetail ? buildThreadMarkdown(threadDetail) : null),
+    [threadDetail],
+  );
 
   const handleDelete = () => {
     if (!confirmDelete) {
@@ -101,9 +146,10 @@ export function ThreadPane({ thread, activeWorkers, onWorkerClick, onNavigate, o
             </button>
           )}
           <span className="reading-pane-byline">
-            {thread.status.replace(/_/g, " ")}
+            {formatThreadStatus(thread.status)}
             {thread.updated_at && <> · {relativeTime(thread.updated_at)}</>}
           </span>
+          {threadMarkdown && <CopyMarkdownButton content={threadMarkdown} />}
         </div>
       </header>
 
